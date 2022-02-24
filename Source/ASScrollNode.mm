@@ -15,7 +15,6 @@
 #import <AsyncDisplayKit/ASLayout.h>
 #import <AsyncDisplayKit/_ASDisplayLayer.h>
 #import <AsyncDisplayKit/ASThread.h>
-#import <AsyncDisplayKit/ASDisplayNode+Yoga.h>
 
 @interface ASScrollView : UIScrollView
 @end
@@ -31,6 +30,13 @@
 - (ASScrollNode *)scrollNode
 {
   return (ASScrollNode *)ASViewToDisplayNode(self);
+}
+
+- (BOOL)touchesShouldCancelInContentView:(UIView *)view {
+  if ([[self scrollNode] canCancelAllTouchesInViews]) {
+    return true;
+  }
+  return [super touchesShouldCancelInContentView:view];
 }
 
 #pragma mark - _ASDisplayView behavior substitutions
@@ -111,21 +117,6 @@
     if (ASPointsValidForLayout(selfSize.height) == NO) {
       selfSize.height = _contentCalculatedSizeFromLayout.height;
     }
-
-    // The side effect for layout with CGFLOAT_MAX is that the min-height/width on the child of
-    // ScrollNode may not be applied correctly. Resulting in the contentSize less than the
-    // scrollNode's bounds which may not be what the child want (e.g. The child want to fill
-    // ScrollNode's bounds). In that case we need to give it a chance to layout with ScrollNode's
-    // bound in case children want to fill the ScrollNode's bound.
-    if ((ASScrollDirectionContainsVerticalDirection(_scrollableDirections) &&
-         layout.size.height < selfSize.height) ||
-        (ASScrollDirectionContainsHorizontalDirection(_scrollableDirections) &&
-         layout.size.width < selfSize.width)) {
-      layout = [super calculateLayoutThatFits:constrainedSize
-                             restrictedToSize:size
-                         relativeToParentSize:parentSize];
-    }
-
     // Don't provide a position, as that should be set by the parent.
     layout = [ASLayout layoutWithLayoutElement:self
                                           size:selfSize

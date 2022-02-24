@@ -7,13 +7,15 @@
 //
 
 #import <UIKit/UIKit.h>
+#import <AsyncDisplayKit/ASAvailability.h>
 
-#import <AsyncDisplayKit/_ASScopeTimer.h>
-#import <AsyncDisplayKit/ASDisplayNodeInternal.h>
+#import "_ASScopeTimer.h"
+#import "ASDisplayNodeInternal.h"
 #import <AsyncDisplayKit/ASDisplayNode+Subclasses.h>
 #import <AsyncDisplayKit/ASLayout.h>
-#import <AsyncDisplayKit/ASLayoutSpec+Subclasses.h>
-#import <AsyncDisplayKit/ASLayoutSpecPrivate.h>
+#import "ASLayoutSpec+Subclasses.h"
+#import "ASLayoutSpecPrivate.h"
+#import <AsyncDisplayKit/ASThread.h>
 
 
 @implementation ASDisplayNode (ASLayoutSpec)
@@ -40,6 +42,7 @@
   // Manual size calculation via calculateSizeThatFits:
   if (_layoutSpecBlock == NULL && (_methodOverrides & ASDisplayNodeMethodOverrideLayoutSpecThatFits) == 0) {
     CGSize size = [self calculateSizeThatFits:constrainedSize.max];
+    ASDisplayNodeLogEvent(self, @"calculatedSize: %@", NSStringFromCGSize(size));
     return [ASLayout layoutWithLayoutElement:self size:ASSizeRangeClamp(constrainedSize, size) sublayouts:nil];
   }
 
@@ -100,6 +103,7 @@
     layout.position = CGPointZero;
     layout = [ASLayout layoutWithLayoutElement:self size:layout.size sublayouts:@[layout]];
   }
+  ASDisplayNodeLogEvent(self, @"computedLayout: %@", layout);
 
   // PR #1157: Reduces accuracy of _unflattenedLayout for debugging/Weaver
   if ([ASDisplayNode shouldStoreUnflattenedLayouts]) {
@@ -107,33 +111,12 @@
   }
   layout = [layout filteredNodeLayoutTree];
 
-  // Flip layout if layout should be rendered right-to-left
-  BOOL shouldRenderRTLLayout = [UIView userInterfaceLayoutDirectionForSemanticContentAttribute:_semanticContentAttribute] == UIUserInterfaceLayoutDirectionRightToLeft;
-  if (shouldRenderRTLLayout) {
-      for (ASLayout *sublayout in layout.sublayouts) {
-          switch (_semanticContentAttribute) {
-              case UISemanticContentAttributeUnspecified:
-              case UISemanticContentAttributeForceRightToLeft: {
-                  // Flip
-                CGPoint flippedPosition = CGPointMake(layout.size.width - CGRectGetWidth(sublayout.frame) - sublayout.position.x, sublayout.position.y);
-                sublayout.position = flippedPosition;
-              }
-              case UISemanticContentAttributePlayback:
-              case UISemanticContentAttributeForceLeftToRight:
-              case UISemanticContentAttributeSpatial:
-                  // Don't flip
-                  break;
-          }
-      }
-  }
-
-
   return layout;
 }
 
 - (id<ASLayoutElement>)_locked_layoutElementThatFits:(ASSizeRange)constrainedSize
 {
-  DISABLED_ASAssertLocked(__instanceLock__);
+  ASAssertLocked(__instanceLock__);
 
   BOOL measureLayoutSpec = _measurementOptions & ASDisplayNodePerformanceMeasurementOptionLayoutSpec;
 

@@ -6,8 +6,9 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import "ASConfigurationInternal.h"
+#import <AsyncDisplayKit/ASConfigurationInternal.h>
 #import <AsyncDisplayKit/ASAssert.h>
+#import <AsyncDisplayKit/ASConfiguration.h>
 #import <AsyncDisplayKit/ASConfigurationDelegate.h>
 #import <stdatomic.h>
 
@@ -80,7 +81,7 @@ NS_INLINE ASConfigurationManager *ASConfigurationManagerGet() {
   
   // Notify delegate if needed.
   if (newlyTriggered != 0) {
-    unowned id<ASConfigurationDelegate> del = _config.delegate;
+    __unsafe_unretained id<ASConfigurationDelegate> del = _config.delegate;
     dispatch_async(_delegateQueue, ^{
       [del textureDidActivateExperimentalFeatures:newlyTriggered];
     });
