@@ -10,6 +10,7 @@
 /// It will be private again after exp_unfair_lock ends.
 
 #import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
 #import <AsyncDisplayKit/ASConfiguration.h>
 
 NS_ASSUME_NONNULL_BEGIN
@@ -34,12 +35,12 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  * Internal function. Use the macro without the underbar.
  */
-ASDK_EXTERN BOOL _ASActivateExperimentalFeature(ASExperimentalFeatures option);
+AS_EXTERN BOOL _ASActivateExperimentalFeature(ASExperimentalFeatures option);
 
 /**
  * Notify the configuration delegate that the framework initialized, if needed.
  */
-ASDK_EXTERN void ASNotifyInitialized(void);
+AS_EXTERN void ASNotifyInitialized(void);
 
 AS_SUBCLASSING_RESTRICTED
 @interface ASConfigurationManager : NSObject

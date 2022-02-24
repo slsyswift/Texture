@@ -7,17 +7,18 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <AsyncDisplayKit/ASLayoutTransition.h>
+#import "ASLayoutTransition.h"
 
 #import <AsyncDisplayKit/NSArray+Diffing.h>
 
 #import <AsyncDisplayKit/ASLayout.h>
-#import <AsyncDisplayKit/ASDisplayNodeInternal.h> // Required for _removeFromSupernodeIfEqualTo:
+#import "ASDisplayNodeInternal.h" // Required for _insertSubnode... / _removeFromSupernode.
 
 #import <queue>
 
-#if AS_IG_LIST_DIFF_KIT
-#import <AsyncDisplayKit/ASLayout+IGListDiffKit.h>
+#if AS_IG_LIST_KIT
+#import <IGListKit/IGListKit.h>
+#import <AsyncDisplayKit/ASLayout+IGListKit.h>
 #endif
 
 using AS::MutexLocker;
@@ -96,11 +97,11 @@ static inline BOOL ASLayoutCanTransitionAsynchronous(ASLayout *layout) {
   [self calculateSubnodeOperationsIfNeeded];
   
   // Create an activity even if no subnodes affected.
-  as_activity_create_for_scope("Apply subnode insertions and moves");
   if (_insertedSubnodePositions.size() == 0 && _subnodeMoves.size() == 0) {
     return;
   }
 
+  ASDisplayNodeLogEvent(_node, @"insertSubnodes: %@", _insertedSubnodes);
   NSUInteger i = 0;
   NSUInteger j = 0;
   for (auto const &move : _subnodeMoves) {
@@ -111,24 +112,23 @@ static inline BOOL ASLayoutCanTransitionAsynchronous(ASLayout *layout) {
     NSUInteger p = _insertedSubnodePositions[i];
     NSUInteger q = _subnodeMoves[j].second;
     if (p < q) {
-      [_node insertSubnode:_insertedSubnodes[i] atIndex:p];
+      [_node _insertSubnode:_insertedSubnodes[i] atIndex:p];
       i++;
     } else {
-      [_node insertSubnode:_subnodeMoves[j].first atIndex:q];
+      [_node _insertSubnode:_subnodeMoves[j].first atIndex:q];
       j++;
     }
   }
   for (; i < _insertedSubnodePositions.size(); ++i) {
-    [_node insertSubnode:_insertedSubnodes[i] atIndex:_insertedSubnodePositions[i]];
+    [_node _insertSubnode:_insertedSubnodes[i] atIndex:_insertedSubnodePositions[i]];
   }
   for (; j < _subnodeMoves.size(); ++j) {
-    [_node insertSubnode:_subnodeMoves[j].first atIndex:_subnodeMoves[j].second];
+    [_node _insertSubnode:_subnodeMoves[j].first atIndex:_subnodeMoves[j].second];
   }
 }
 
 - (void)applySubnodeRemovals
 {
-  as_activity_scope(as_activity_create("Apply subnode removals", AS_ACTIVITY_CURRENT, OS_ACTIVITY_FLAG_DEFAULT));
   MutexLocker l(*__instanceLock__);
   [self calculateSubnodeOperationsIfNeeded];
 
@@ -136,6 +136,7 @@ static inline BOOL ASLayoutCanTransitionAsynchronous(ASLayout *layout) {
     return;
   }
 
+  ASDisplayNodeLogEvent(_node, @"removeSubnodes: %@", _removedSubnodes);
   for (ASDisplayNode *subnode in _removedSubnodes) {
     // In this case we should only remove the subnode if it's still a subnode of the _node that executes a layout transition.
     // It can happen that a node already did a layout transition and added this subnode, in this case the subnode
@@ -154,18 +155,17 @@ static inline BOOL ASLayoutCanTransitionAsynchronous(ASLayout *layout) {
   }
   
   // Create an activity even if no subnodes affected.
-  as_activity_create_for_scope("Calculate subnode operations");
   ASLayout *previousLayout = _previousLayout.layout;
   ASLayout *pendingLayout = _pendingLayout.layout;
 
   if (previousLayout) {
-#if AS_IG_LIST_DIFF_KIT
+#if AS_IG_LIST_KIT
     // IGListDiff completes in linear time O(m+n), so use it if we have it:
     IGListIndexSetResult *result = IGListDiff(previousLayout.sublayouts, pendingLayout.sublayouts, IGListDiffEquality);
     _insertedSubnodePositions = findNodesInLayoutAtIndexes(pendingLayout, result.inserts, &_insertedSubnodes);
     findNodesInLayoutAtIndexes(previousLayout, result.deletes, &_removedSubnodes);
     for (IGListMoveIndex *move in result.moves) {
-      _subnodeMoves.emplace_back(previousLayout.sublayouts[move.from].layoutElement, move.to);
+      _subnodeMoves.push_back(std::make_pair(previousLayout.sublayouts[move.from].layoutElement, move.to));
     }
 
     // Sort by ascending order of move destinations, this will allow easy loop of `insertSubnode:AtIndex` later.
@@ -187,8 +187,8 @@ static inline BOOL ASLayoutCanTransitionAsynchronous(ASLayout *layout) {
     _removedSubnodes = [previousNodes objectsAtIndexes:deletions];
     // These should arrive sorted in ascending order of move destinations.
     for (NSIndexPath *move in moves) {
-      _subnodeMoves.emplace_back(previousLayout.sublayouts[([move indexAtPosition:0])].layoutElement,
-              [move indexAtPosition:1]);
+      _subnodeMoves.push_back(std::make_pair(previousLayout.sublayouts[([move indexAtPosition:0])].layoutElement,
+              [move indexAtPosition:1]));
     }
 #endif
   } else {

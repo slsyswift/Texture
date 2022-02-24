@@ -13,11 +13,13 @@
 #import <queue>
 
 #import <AsyncDisplayKit/ASCollections.h>
-#import <AsyncDisplayKit/ASLayoutSpecUtilities.h>
-#import <AsyncDisplayKit/ASLayoutSpec+Subclasses.h>
+#import <AsyncDisplayKit/ASDimension.h>
+#import "ASLayoutSpecUtilities.h"
+#import "ASLayoutSpec+Subclasses.h"
 
 #import <AsyncDisplayKit/ASEqualityHelpers.h>
 #import <AsyncDisplayKit/ASInternalHelpers.h>
+#import <AsyncDisplayKit/ASObjectDescriptionHelpers.h>
 
 NSString *const ASThreadDictMaxConstraintSizeKey = @"kASThreadDictMaxConstraintSizeKey";
 
@@ -92,7 +94,7 @@ static std::atomic_bool static_retainsSublayoutLayoutElements = ATOMIC_VAR_INIT(
     _layoutElementType = layoutElement.layoutElementType;
     
     if (!ASIsCGSizeValidForSize(size)) {
-      ASDisplayNodeFailAssert(@"layoutSize is invalid and unsafe to provide to Core Animation! Release configurations will force to 0, 0.  Size = %@, node = %@", NSStringFromCGSize(size), layoutElement);
+      //ASDisplayNodeFailAssert(@"layoutSize is invalid and unsafe to provide to Core Animation! Release configurations will force to 0, 0.  Size = %@, node = %@", NSStringFromCGSize(size), layoutElement);
       size = CGSizeZero;
     } else {
       size = CGSizeMake(ASCeilPixelValue(size.width), ASCeilPixelValue(size.height));

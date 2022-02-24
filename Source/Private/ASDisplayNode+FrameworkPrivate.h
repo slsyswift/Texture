@@ -13,6 +13,7 @@
 //
 
 #import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
 #import <AsyncDisplayKit/ASDisplayNode.h>
 #import <AsyncDisplayKit/ASObjectDescriptionHelpers.h>
 
@@ -31,7 +32,7 @@ NS_ASSUME_NONNULL_BEGIN
  cancelled below the point they are enabled.  They continue to the leaves of the hierarchy.
  */
 
-typedef NS_OPTIONS(unsigned char, ASHierarchyState)
+typedef NS_OPTIONS(NSUInteger, ASHierarchyState)
 {
   /** The node may or may not have a supernode, but no supernode has a special hierarchy-influencing option enabled. */
   ASHierarchyStateNormal                  = 0,
@@ -62,33 +63,33 @@ ASDISPLAYNODE_INLINE BOOL ASHierarchyStateIncludesRangeManaged(ASHierarchyState 
 
 ASDISPLAYNODE_INLINE BOOL ASHierarchyStateIncludesRasterized(ASHierarchyState hierarchyState)
 {
-	return ((hierarchyState & ASHierarchyStateRasterized) == ASHierarchyStateRasterized);
+  return ((hierarchyState & ASHierarchyStateRasterized) == ASHierarchyStateRasterized);
 }
 
 ASDISPLAYNODE_INLINE BOOL ASHierarchyStateIncludesTransitioningSupernodes(ASHierarchyState hierarchyState)
 {
-	return ((hierarchyState & ASHierarchyStateTransitioningSupernodes) == ASHierarchyStateTransitioningSupernodes);
+  return ((hierarchyState & ASHierarchyStateTransitioningSupernodes) == ASHierarchyStateTransitioningSupernodes);
 }
 
 __unused static NSString * _Nonnull NSStringFromASHierarchyState(ASHierarchyState hierarchyState)
 {
-	NSMutableArray *states = [NSMutableArray array];
-	if (hierarchyState == ASHierarchyStateNormal) {
-		[states addObject:@"Normal"];
-	}
-	if (ASHierarchyStateIncludesRangeManaged(hierarchyState)) {
-		[states addObject:@"RangeManaged"];
-	}
-	if (ASHierarchyStateIncludesLayoutPending(hierarchyState)) {
-		[states addObject:@"LayoutPending"];
-	}
-	if (ASHierarchyStateIncludesRasterized(hierarchyState)) {
-		[states addObject:@"Rasterized"];
-	}
-	if (ASHierarchyStateIncludesTransitioningSupernodes(hierarchyState)) {
-		[states addObject:@"TransitioningSupernodes"];
-	}
-	return [NSString stringWithFormat:@"{ %@ }", [states componentsJoinedByString:@" | "]];
+  NSMutableArray *states = [NSMutableArray array];
+  if (hierarchyState == ASHierarchyStateNormal) {
+    [states addObject:@"Normal"];
+  }
+  if (ASHierarchyStateIncludesRangeManaged(hierarchyState)) {
+    [states addObject:@"RangeManaged"];
+  }
+  if (ASHierarchyStateIncludesLayoutPending(hierarchyState)) {
+    [states addObject:@"LayoutPending"];
+  }
+  if (ASHierarchyStateIncludesRasterized(hierarchyState)) {
+    [states addObject:@"Rasterized"];
+  }
+  if (ASHierarchyStateIncludesTransitioningSupernodes(hierarchyState)) {
+    [states addObject:@"TransitioningSupernodes"];
+  }
+  return [NSString stringWithFormat:@"{ %@ }", [states componentsJoinedByString:@" | "]];
 }
 
 #define HIERARCHY_STATE_DELTA(Name) ({ \
@@ -115,6 +116,11 @@ __unused static NSString * _Nonnull NSStringFromASHierarchyStateChange(ASHierarc
 #undef HIERARCHY_STATE_DELTA
 
 @interface ASDisplayNode () <ASDescriptionProvider, ASDebugDescriptionProvider>
+{
+@protected
+  ASInterfaceState _interfaceState;
+  ASHierarchyState _hierarchyState;
+}
 
 // The view class to use when creating a new display node instance. Defaults to _ASDisplayView.
 + (Class)viewClass;
@@ -155,11 +161,6 @@ __unused static NSString * _Nonnull NSStringFromASHierarchyStateChange(ASHierarc
 @property (nonatomic) ASHierarchyState hierarchyState;
 
 /**
- * Represent the current custom action in representation for the node
- */
-@property (nonatomic, weak) UIAccessibilityCustomAction *accessibilityCustomAction;
-
-/**
  * @abstract Return if the node is range managed or not
  *
  * @discussion Currently only set interface state on nodes in table and collection views. For other nodes, if they are
@@ -174,7 +175,7 @@ __unused static NSString * _Nonnull NSStringFromASHierarchyStateChange(ASHierarc
  * @abstract Ensure that all rendering is complete for this node and its descendants.
  *
  * @discussion Calling this method on the main thread after a node is added to the view hierarchy will ensure that
- * placeholder states are never visible to the user.  It is used by ASTableView, ASCollectionView, and ASDKViewController
+ * placeholder states are never visible to the user.  It is used by ASTableView, ASCollectionView, and ASViewController
  * to implement their respective ".neverShowPlaceholders" option.
  *
  * If all nodes have layer.contents set and/or their layer does not have -needsDisplay set, the method will return immediately.
@@ -242,10 +243,10 @@ __unused static NSString * _Nonnull NSStringFromASHierarchyStateChange(ASHierarc
 /**
  * @abstract Indicates if this node is a view controller's root node. Defaults to NO.
  *
- * @discussion Set to YES in -[ASDKViewController initWithNode:].
+ * @discussion Set to YES in -[ASViewController initWithNode:].
  *
- * YES here only means that this node is used as an ASDKViewController node. It doesn't mean that this node is a root of
- * ASDisplayNode hierarchy, e.g. when its view controller is parented by another ASDKViewController.
+ * YES here only means that this node is used as an ASViewController node. It doesn't mean that this node is a root of
+ * ASDisplayNode hierarchy, e.g. when its view controller is parented by another ASViewController.
  */
 @property (nonatomic, getter=isViewControllerRoot) BOOL viewControllerRoot;
 
@@ -312,24 +313,8 @@ __unused static NSString * _Nonnull NSStringFromASHierarchyStateChange(ASHierarc
 
 @end
 
-/**
- * Defines interactive accessibility traits which will be exposed as UIAccessibilityCustomActions
- * for nodes within nodes that have isAccessibilityContainer is YES
- */
-NS_INLINE UIAccessibilityTraits ASInteractiveAccessibilityTraitsMask() {
-  return UIAccessibilityTraitLink | UIAccessibilityTraitKeyboardKey | UIAccessibilityTraitButton;
-}
-
 @interface ASDisplayNode (AccessibilityInternal)
-- (nullable NSArray *)accessibilityElements;
+- (NSArray *)accessibilityElements;
 @end;
-
-@interface UIView (ASDisplayNodeInternal)
-@property (nullable, weak) ASDisplayNode *asyncdisplaykit_node;
-@end
-
-@interface CALayer (ASDisplayNodeInternal)
-@property (nullable, weak) ASDisplayNode *asyncdisplaykit_node;
-@end
 
 NS_ASSUME_NONNULL_END

@@ -7,36 +7,47 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <AsyncDisplayKit/ASMainSerialQueue.h>
+#import "ASMainSerialQueue.h"
 
 #import <AsyncDisplayKit/ASThread.h>
 #import <AsyncDisplayKit/ASInternalHelpers.h>
-#import <queue>
 
 @interface ASMainSerialQueue ()
 {
   AS::Mutex _serialQueueLock;
-  std::queue<dispatch_block_t> _blocks;
+  NSMutableArray *_blocks;
 }
 
 @end
 
 @implementation ASMainSerialQueue
 
+- (instancetype)init
+{
+  if (!(self = [super init])) {
+    return nil;
+  }
+  
+  _blocks = [[NSMutableArray alloc] init];
+  return self;
+}
+
 - (NSUInteger)numberOfScheduledBlocks
 {
   AS::MutexLocker l(_serialQueueLock);
-  return _blocks.size();
+  return _blocks.count;
 }
 
 - (void)performBlockOnMainThread:(dispatch_block_t)block
 {
-  {
-    AS::MutexLocker l(_serialQueueLock);
-    _blocks.push(block);
-  }
 
-  [self runBlocks];
+  AS::UniqueLock l(_serialQueueLock);
+  [_blocks addObject:block];
+  {
+    l.unlock();
+    [self runBlocks];
+    l.lock();
+  }
 }
 
 - (void)runBlocks
@@ -44,11 +55,13 @@
   dispatch_block_t mainThread = ^{
     AS::UniqueLock l(self->_serialQueueLock);
     do {
-      if (self->_blocks.empty()) {
+      dispatch_block_t block;
+      if (self->_blocks.count > 0) {
+        block = _blocks[0];
+        [self->_blocks removeObjectAtIndex:0];
+      } else {
         break;
       }
-      dispatch_block_t block = self->_blocks.front();
-      self->_blocks.pop();
       {
         l.unlock();
         block();
@@ -62,15 +75,7 @@
 
 - (NSString *)description
 {
-  NSString *desc = [super description];
-  std::queue<dispatch_block_t> blocks = _blocks;
-  [desc stringByAppendingString:@" Blocks: "];
-  while (!blocks.empty()) {
-      dispatch_block_t block = blocks.front();
-      [desc stringByAppendingFormat:@"%@", block];
-      blocks.pop();
-  }
-  return desc;
+  return [[super description] stringByAppendingFormat:@" Blocks: %@", _blocks];
 }
 
 @end

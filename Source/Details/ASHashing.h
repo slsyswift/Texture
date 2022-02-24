@@ -7,6 +7,7 @@
 //
 
 #import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
 #import <AsyncDisplayKit/ASBaseDefines.h>
 
 NS_ASSUME_NONNULL_BEGIN
@@ -20,7 +21,7 @@ NS_ASSUME_NONNULL_BEGIN
  *  CGRect myRect = { ... };
  *  ASHashBytes(&myRect, sizeof(myRect));
  *
- * Example: 
+ * Example:
  *  struct {
  *    NSUInteger imageHash;
  *    CGSize size;
@@ -30,11 +31,11 @@ NS_ASSUME_NONNULL_BEGIN
  *  };
  *  return ASHashBytes(&data, sizeof(data));
  *
- * @warning: If a struct has padding, any fields that are intiailized in {} 
+ * @warning: If a struct has padding, any fields that are intiailized in {}
  *   will have garbage data for their padding, which will break this hash! Either
  *   use `pragma clang diagnostic warning "-Wpadded"` around your struct definition
  *   or manually initialize the fields of your struct (`myStruct.x = 7;` etc).
  */
-ASDK_EXTERN NSUInteger ASHashBytes(void *bytes, size_t length);
+AS_EXTERN NSUInteger ASHashBytes(void *bytes, size_t length);
 
 NS_ASSUME_NONNULL_END

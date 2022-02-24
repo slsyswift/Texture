@@ -9,13 +9,26 @@
 
 #import <AsyncDisplayKit/ASEditableTextNode.h>
 
+#import <objc/message.h>
 #import <tgmath.h>
 
 #import <AsyncDisplayKit/ASDisplayNode+Subclasses.h>
 #import <AsyncDisplayKit/ASEqualityHelpers.h>
 #import <AsyncDisplayKit/ASTextKitComponents.h>
-#import <AsyncDisplayKit/ASTextNodeWordKerner.h>
+#import "ASTextNodeWordKerner.h"
 #import <AsyncDisplayKit/ASThread.h>
+
+@implementation ASEditableTextNodeTargetForAction
+
+- (instancetype)initWithTarget:(id _Nullable)target {
+  self = [super init];
+  if (self != nil) {
+    _target = target;
+  }
+  return self;
+}
+
+@end
 
 /**
  @abstract Object to hold UITextView's pending UITextInputTraits
@@ -55,8 +68,8 @@
 
 /**
  @abstract As originally reported in rdar://14729288, when scrollEnabled = NO,
-   UITextView does not calculate its contentSize. This makes it difficult 
-   for a client to embed a UITextView inside a different scroll view with 
+   UITextView does not calculate its contentSize. This makes it difficult
+   for a client to embed a UITextView inside a different scroll view with
    other content (setting scrollEnabled = NO on the UITextView itself,
    because the containing scroll view will handle the gesture)...
    because accessing contentSize is typically necessary to perform layout.
@@ -66,10 +79,21 @@
 
  See issue: https://github.com/facebook/AsyncDisplayKit/issues/1063
  */
+
 @interface ASPanningOverriddenUITextView : ASTextKitComponentsTextView
 {
   BOOL _shouldBlockPanGesture;
 }
+
+@property (nonatomic, copy) bool (^shouldCopy)();
+@property (nonatomic, copy) bool (^shouldPaste)();
+@property (nonatomic, copy) ASEditableTextNodeTargetForAction *(^targetForActionImpl)(SEL);
+@property (nonatomic, copy) bool (^shouldReturn)();
+@property (nonatomic, copy) void (^backspaceWhileEmpty)();
+
+@property (nonatomic, strong) NSString * _Nullable initialPrimaryLanguage;
+@property (nonatomic) bool initializedPrimaryInputLanguage;
+
 @end
 
 @implementation ASPanningOverriddenUITextView
@@ -88,6 +112,134 @@
 
   [super setScrollEnabled:YES];
 }
+
+- (void)setContentSize:(CGSize)contentSize {
+    if (_shouldBlockPanGesture) {
+        return;
+    }
+    [super setContentSize:contentSize];
+}
+
+- (void)setContentOffset:(CGPoint)contentOffset {
+    if (_shouldBlockPanGesture) {
+        return;
+    }
+    [super setContentOffset:contentOffset];
+}
+
+- (void)setContentOffset:(CGPoint)contentOffset animated:(BOOL)animated {
+    if (_shouldBlockPanGesture) {
+        return;
+    }
+    [super setContentOffset:contentOffset animated:animated];
+}
+
+- (void)setBounds:(CGRect)bounds {
+    [super setBounds:bounds];
+}
+
+- (BOOL)canPerformAction:(SEL)action withSender:(id)sender
+{
+  if (_targetForActionImpl) {
+    ASEditableTextNodeTargetForAction *result = _targetForActionImpl(action);
+    if (result) {
+      return result.target != nil;
+    }
+  }
+  
+  if (action == @selector(paste:)) {
+    NSArray *items = [UIMenuController sharedMenuController].menuItems;
+    if (((UIMenuItem *)items.firstObject).action == @selector(toggleBoldface:)) {
+      return false;
+    }
+    return true;
+  }
+  
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wundeclared-selector"
+  static SEL promptForReplaceSelector;
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    promptForReplaceSelector = NSSelectorFromString(@"_promptForReplace:");
+  });
+  if (action == promptForReplaceSelector) {
+    return false;
+  }
+#pragma clang diagnostic pop
+  
+  if (action == @selector(toggleUnderline:)) {
+    return false;
+  }
+  
+  return [super canPerformAction:action withSender:sender];
+}
+
+- (id)targetForAction:(SEL)action withSender:(id)__unused sender
+{
+  if (_targetForActionImpl) {
+    ASEditableTextNodeTargetForAction *result = _targetForActionImpl(action);
+    if (result) {
+      return result.target;
+    }
+  }
+  return [super targetForAction:action withSender:sender];
+}
+  
+- (void)copy:(id)sender {
+  if (_shouldCopy == nil || _shouldCopy()) {
+    [super copy:sender];
+  }
+}
+
+- (void)paste:(id)sender
+{
+  if (_shouldPaste == nil || _shouldPaste()) {
+    [super paste:sender];
+  }
+}
+
+- (NSArray *)keyCommands {
+  UIKeyCommand *plainReturn = [UIKeyCommand keyCommandWithInput:@"\r" modifierFlags:kNilOptions action:@selector(handlePlainReturn:)];
+  return @[
+    plainReturn
+  ];
+}
+
+- (void)handlePlainReturn:(id)__unused sender {
+  if (_shouldReturn) {
+    _shouldReturn();
+  }
+}
+
+- (void)deleteBackward {
+  bool notify = self.text.length == 0;
+  [super deleteBackward];
+  if (notify) {
+    if (_backspaceWhileEmpty) {
+      _backspaceWhileEmpty();
+    }
+  }
+}
+
+- (UIKeyboardAppearance)keyboardAppearance {
+  return [super keyboardAppearance];
+}
+
+- (UITextInputMode *)textInputMode {
+  if (!_initializedPrimaryInputLanguage) {
+    _initializedPrimaryInputLanguage = true;
+      if (_initialPrimaryLanguage != nil) {
+      for (UITextInputMode *inputMode in [UITextInputMode activeInputModes]) {
+        NSString *primaryLanguage = inputMode.primaryLanguage;
+        if (primaryLanguage != nil && [primaryLanguage isEqualToString:_initialPrimaryLanguage]) {
+          return inputMode;
+        }
+      }
+    }
+  }
+  return [super textInputMode];
+}
+
 #endif
 
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer
@@ -105,7 +257,7 @@
 @end
 
 #pragma mark -
-@interface ASEditableTextNode () <UITextViewDelegate, NSLayoutManagerDelegate>
+@interface ASEditableTextNode () <UITextViewDelegate, NSLayoutManagerDelegate, UIGestureRecognizerDelegate>
 {
   @private
   // Configuration.
@@ -113,6 +265,7 @@
 
   // Core.
   id <ASEditableTextNodeDelegate> __weak _delegate;
+  BOOL _delegateDidUpdateEnqueued;
 
   // TextKit.
   AS::RecursiveMutex _textKitLock;
@@ -128,10 +281,8 @@
   // Misc. State.
   BOOL _displayingPlaceholder; // Defaults to YES.
   BOOL _isPreservingSelection;
+  BOOL _isPreservingText;
   BOOL _selectionChangedForEditedText;
-  BOOL _delegateDidUpdateEnqueued;
-  BOOL _scrollEnabled;
-
   NSRange _previousSelectedRange;
 }
 
@@ -176,11 +327,11 @@
   [super didLoad];
 
   void (^configureTextView)(UITextView *) = ^(UITextView *textView) {
-    if (!self->_displayingPlaceholder || textView != self->_textKitComponents.textView) {
+    if (!_displayingPlaceholder || textView != _textKitComponents.textView) {
       // If showing the placeholder, don't propagate backgroundColor/opaque to the editable textView.  It is positioned over the placeholder to accept taps to begin editing, and if it's opaque/colored then it'll obscure the placeholder.
       textView.backgroundColor = self.backgroundColor;
       textView.opaque = self.opaque;
-    } else if (self->_displayingPlaceholder && textView == self->_textKitComponents.textView) {
+    } else if (_displayingPlaceholder && textView == _textKitComponents.textView) {
       // The default backgroundColor for a textView is white.  Due to the reason described above, make sure the editable textView starts out transparent.
       textView.backgroundColor = nil;
       textView.opaque = NO;
@@ -189,16 +340,16 @@
     
     // Configure textView with UITextInputTraits
     {
-      AS::MutexLocker l(self->_textInputTraitsLock);
-      if (self->_textInputTraits) {
-        textView.autocapitalizationType         = self->_textInputTraits.autocapitalizationType;
-        textView.autocorrectionType             = self->_textInputTraits.autocorrectionType;
-        textView.spellCheckingType              = self->_textInputTraits.spellCheckingType;
-        textView.keyboardType                   = self->_textInputTraits.keyboardType;
-        textView.keyboardAppearance             = self->_textInputTraits.keyboardAppearance;
-        textView.returnKeyType                  = self->_textInputTraits.returnKeyType;
-        textView.enablesReturnKeyAutomatically  = self->_textInputTraits.enablesReturnKeyAutomatically;
-        textView.secureTextEntry                = self->_textInputTraits.isSecureTextEntry;
+      AS::MutexLocker l(_textInputTraitsLock);
+      if (_textInputTraits) {
+        textView.autocapitalizationType         = _textInputTraits.autocapitalizationType;
+        textView.autocorrectionType             = _textInputTraits.autocorrectionType;
+        textView.spellCheckingType              = _textInputTraits.spellCheckingType;
+        textView.keyboardType                   = _textInputTraits.keyboardType;
+        textView.keyboardAppearance             = _textInputTraits.keyboardAppearance;
+        textView.returnKeyType                  = _textInputTraits.returnKeyType;
+        textView.enablesReturnKeyAutomatically  = _textInputTraits.enablesReturnKeyAutomatically;
+        textView.secureTextEntry                = _textInputTraits.isSecureTextEntry;
       }
     }
     
@@ -214,7 +365,54 @@
   configureTextView(_placeholderTextKitComponents.textView);
 
   // Create and configure our text view.
-  _textKitComponents.textView = [[ASPanningOverriddenUITextView alloc] initWithFrame:CGRectZero textContainer:_textKitComponents.textContainer];
+  ASPanningOverriddenUITextView *textView = [[ASPanningOverriddenUITextView alloc] initWithFrame:CGRectZero textContainer:_textKitComponents.textContainer];
+  textView.initialPrimaryLanguage = _initialPrimaryLanguage;
+  __weak ASEditableTextNode *weakSelf = self;
+  textView.shouldCopy = ^bool{
+    __strong ASEditableTextNode *strongSelf = weakSelf;
+    if (strongSelf != nil) {
+      if ([strongSelf->_delegate respondsToSelector:@selector(editableTextNodeShouldCopy:)]) {
+        return [strongSelf->_delegate editableTextNodeShouldCopy:self];
+      }
+    }
+    return true;
+  };
+  textView.shouldPaste = ^bool{
+    __strong ASEditableTextNode *strongSelf = weakSelf;
+    if (strongSelf != nil) {
+      if ([strongSelf->_delegate respondsToSelector:@selector(editableTextNodeShouldPaste:)]) {
+        return [strongSelf->_delegate editableTextNodeShouldPaste:self];
+      }
+    }
+    return true;
+  };
+  textView.targetForActionImpl = ^id(SEL action) {
+    __strong ASEditableTextNode *strongSelf = weakSelf;
+    if (strongSelf != nil) {
+      if ([strongSelf->_delegate respondsToSelector:@selector(editableTextNodeTargetForAction:)]) {
+        return [strongSelf->_delegate editableTextNodeTargetForAction:action];
+      }
+    }
+    return nil;
+  };
+  textView.shouldReturn = ^bool {
+    __strong ASEditableTextNode *strongSelf = weakSelf;
+    if (strongSelf != nil) {
+      if ([strongSelf->_delegate respondsToSelector:@selector(editableTextNodeShouldReturn:)]) {
+        return [strongSelf->_delegate editableTextNodeShouldReturn:strongSelf];
+      }
+    }
+    return true;
+  };
+  textView.backspaceWhileEmpty = ^{
+    __strong ASEditableTextNode *strongSelf = weakSelf;
+    if (strongSelf != nil) {
+      if ([strongSelf->_delegate respondsToSelector:@selector(editableTextNodeBackspaceWhileEmpty:)]) {
+        [strongSelf->_delegate editableTextNodeBackspaceWhileEmpty:strongSelf];
+      }
+    }
+  };
+  _textKitComponents.textView = textView;
   _textKitComponents.textView.scrollEnabled = _scrollEnabled;
   _textKitComponents.textView.delegate = self;
   #if TARGET_OS_IOS
@@ -228,6 +426,32 @@
     
   // once view is loaded, setters set directly on view
   _textInputTraits = nil;
+  
+  UITapGestureRecognizer *tapRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapGesture:)];
+  tapRecognizer.cancelsTouchesInView = false;
+  tapRecognizer.delaysTouchesBegan = false;
+  tapRecognizer.delaysTouchesEnded = false;
+  tapRecognizer.delegate = self;
+  [self.view addGestureRecognizer:tapRecognizer];
+}
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer {
+  return true;
+}
+
+- (void)tapGesture:(UITapGestureRecognizer *)recognizer {
+  static Class promptClass = nil;
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    promptClass = NSClassFromString([[NSString alloc] initWithFormat:@"%@AutocorrectInlinePrompt", @"UI"]);
+  });
+  
+  if (recognizer.state == UIGestureRecognizerStateEnded) {
+    UIView *result = [self hitTest:[recognizer locationInView:self.view] withEvent:nil];
+    if (result != nil && [result class] == promptClass) {
+      [self dropAutocorrection];
+    }
+  }
 }
 
 - (CGSize)calculateSizeThatFits:(CGSize)constrainedSize
@@ -243,7 +467,7 @@
     textSize = [displayedComponents sizeForConstrainedWidth:constrainedSize.width];
   }
   
-  CGFloat width = std::ceil(textSize.width + _textContainerInset.left + _textContainerInset.right);
+  CGFloat width = std::ceil(constrainedSize.width);
   CGFloat height = std::ceil(textSize.height + _textContainerInset.top + _textContainerInset.bottom);
   return CGSizeMake(std::fmin(width, constrainedSize.width), std::fmin(height, constrainedSize.height));
 }
@@ -363,6 +587,15 @@
   _textKitComponents.textView.selectedRange = selectedRange;
 }
 
+- (CGRect)selectionRect {
+    UITextRange *range = [_textKitComponents.textView selectedTextRange];
+    if (range != nil) {
+        return [_textKitComponents.textView firstRectForRange:range];
+    } else {
+        return [_textKitComponents.textView bounds];
+    }
+}
+
 #pragma mark - Placeholder
 - (BOOL)isDisplayingPlaceholder
 {
@@ -443,6 +676,49 @@
   }
 }
 
+- (void)setInitialPrimaryLanguage:(NSString *)initialPrimaryLanguage {
+  _initialPrimaryLanguage = initialPrimaryLanguage;
+  ((ASPanningOverriddenUITextView *)_textKitComponents.textView).initialPrimaryLanguage = initialPrimaryLanguage;
+}
+
+- (void)resetInitialPrimaryLanguage {
+  ((ASPanningOverriddenUITextView *)_textKitComponents.textView).initializedPrimaryInputLanguage = false;
+}
+
+- (void)dropAutocorrection {
+  _isPreservingSelection = YES; // Used in -textViewDidChangeSelection: to avoid informing our delegate about our preservation.
+  _isPreservingText = YES;
+  
+  UITextView *textView = _textKitComponents.textView;
+  
+  NSRange rangeCopy = textView.selectedRange;
+  NSRange fakeRange = rangeCopy;
+  if (fakeRange.location != 0) {
+    fakeRange.location--;
+  }
+  [textView unmarkText];
+  [textView setSelectedRange:fakeRange];
+  [textView setSelectedRange:rangeCopy];
+  
+  //[_textKitComponents.textView.inputDelegate textWillChange:_textKitComponents.textView];
+  //[_textKitComponents.textView.inputDelegate textDidChange:_textKitComponents.textView];
+  
+  _isPreservingSelection = NO;
+  _isPreservingText = NO;
+}
+
+- (bool)isCurrentlyEmoji {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+  NSString *value = [[UITextInputMode currentInputMode] primaryLanguage];
+#pragma clang diagnostic pop
+  if ([value isEqualToString:@"emoji"]) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 #pragma mark - Core
 - (void)_updateDisplayingPlaceholder
 {
@@ -476,6 +752,11 @@
 
   // When you type beyond UITextView's bounds it scrolls you down a line. We need to remain at the top.
   [_textKitComponents.textView setContentOffset:CGPointZero animated:NO];
+  [_textKitComponents.layoutManager ensureGlyphsForCharacterRange:NSMakeRange(0, [_textKitComponents.textStorage length])];
+  NSRange range = [self selectedRange];
+  range.location = range.location + range.length - 1;
+  range.length = 1;
+  [self.textView scrollRangeToVisible:range];
 }
 
 #pragma mark - Keyboard
@@ -699,6 +980,9 @@
 
 - (BOOL)textView:(UITextView *)textView shouldChangeTextInRange:(NSRange)range replacementText:(NSString *)text
 {
+  if (_isPreservingText) {
+    return false;
+  }
   // Delegateify.
   return [self _delegateShouldChangeTextInRange:range replacementText:text];
 }
@@ -765,6 +1049,35 @@
   return [_wordKerner layoutManager:layoutManager boundingBoxForControlGlyphAtIndex:glyphIndex forTextContainer:textContainer proposedLineFragment:proposedRect glyphPosition:glyphPosition characterIndex:characterIndex];
 }
 
+- (BOOL)layoutManager:(NSLayoutManager *)layoutManager shouldSetLineFragmentRect:(inout CGRect *)lineFragmentRect lineFragmentUsedRect:(inout CGRect *)lineFragmentUsedRect baselineOffset:(inout CGFloat *)baselineOffset inTextContainer:(NSTextContainer *)textContainer forGlyphRange:(NSRange)glyphRange {
+  CGFloat fontLineHeight;
+  UIFont *baseFont = _baseFont;
+  if (_typingAttributes[NSFontAttributeName] != nil) {
+    baseFont = _typingAttributes[NSFontAttributeName];
+  }
+  if (baseFont == nil) {
+    fontLineHeight = 20.0;
+  } else {
+    CGFloat fontAscent = baseFont.ascender;
+    CGFloat fontDescent = ABS(baseFont.descender);
+    fontLineHeight = floor(fontAscent + fontDescent);
+  }
+  CGFloat lineHeight = fontLineHeight * 1.0;
+  CGFloat baselineNudge = (lineHeight - fontLineHeight) * 0.6f;
+  
+  CGRect rect = *lineFragmentRect;
+  rect.size.height = lineHeight + 2.0f;
+  
+  CGRect usedRect = *lineFragmentUsedRect;
+  usedRect.size.height = MAX(lineHeight, usedRect.size.height);
+  
+  *lineFragmentRect = rect;
+  *lineFragmentUsedRect = usedRect;
+  *baselineOffset = *baselineOffset + baselineNudge;
+  
+  return true;
+}
+
 #pragma mark - Geometry
 - (CGRect)frameForTextRange:(NSRange)textRange
 {
@@ -815,8 +1128,8 @@
   // 2. This delegate method (-textViewDidChangeSelection:) is called both before -textViewDidChange: and before the layout manager/etc. has necessarily generated+laid out its glyphs. Because of the former, we need to wait until -textViewDidChange: has had an opportunity to be called so can accurately determine whether this selection change is due to editing (_selectionChangedForEditedText).
   // Thus, to avoid calling out to client code in the middle of UITextView's processing, we call the delegate on the next run of the runloop, when all such internal processing is surely done.
   dispatch_async(dispatch_get_main_queue(), ^{
-    if ([self->_delegate respondsToSelector:@selector(editableTextNodeDidChangeSelection:fromSelectedRange:toSelectedRange:dueToEditing:)])
-      [self->_delegate editableTextNodeDidChangeSelection:self fromSelectedRange:fromSelectedRange toSelectedRange:toSelectedRange dueToEditing:self->_selectionChangedForEditedText];
+    if ([_delegate respondsToSelector:@selector(editableTextNodeDidChangeSelection:fromSelectedRange:toSelectedRange:dueToEditing:)])
+      [_delegate editableTextNodeDidChangeSelection:self fromSelectedRange:fromSelectedRange toSelectedRange:toSelectedRange dueToEditing:_selectionChangedForEditedText];
   });
 }
 
@@ -831,9 +1144,9 @@
   // UITextView invokes its delegate methods when it's in the middle of text-processing. For example, -textViewDidChange: is invoked before you can truly rely on the changes being propagated throughout the Text Kit hierarchy.
   // Thus, to avoid calling out to client code in the middle of UITextView's processing, we call the delegate on the next run of the runloop, when all such internal processing is surely done.
   dispatch_async(dispatch_get_main_queue(), ^{
-    self->_delegateDidUpdateEnqueued = NO;
-    if ([self->_delegate respondsToSelector:@selector(editableTextNodeDidUpdateText:)])
-      [self->_delegate editableTextNodeDidUpdateText:self];
+    _delegateDidUpdateEnqueued = NO;
+    if ([_delegate respondsToSelector:@selector(editableTextNodeDidUpdateText:)])
+      [_delegate editableTextNodeDidUpdateText:self];
   });
 }
 

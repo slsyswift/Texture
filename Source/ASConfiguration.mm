@@ -7,6 +7,7 @@
 //
 
 #import <AsyncDisplayKit/ASConfiguration.h>
+#import <AsyncDisplayKit/ASConfigurationInternal.h>
 
 /// Not too performance-sensitive here.
 

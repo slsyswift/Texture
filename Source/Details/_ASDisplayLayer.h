@@ -73,7 +73,7 @@ NS_ASSUME_NONNULL_BEGIN
 @end
 
 /**
- * Optional methods that the view associated with an _ASDisplayLayer can implement. 
+ * Optional methods that the view associated with an _ASDisplayLayer can implement.
  * This is distinguished from _ASDisplayLayerDelegate in that it points to the _view_
  * not the node. Unfortunately this is required by ASCollectionView, since we currently
  * can't guarantee that an ASCollectionNode exists for it.

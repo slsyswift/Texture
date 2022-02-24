@@ -7,6 +7,7 @@
 //
 
 #import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
 #import <AsyncDisplayKit/ASBaseDefines.h>
 #import <pthread/pthread.h>
 #import <os/lock.h>
@@ -20,20 +21,20 @@ NS_ASSUME_NONNULL_BEGIN
 OS_UNFAIR_LOCK_AVAILABILITY
 typedef struct {
   os_unfair_lock _lock OS_UNFAIR_LOCK_AVAILABILITY;
-  _Atomic(pthread_t) _thread;
+  _Atomic(pthread_t) _thread;  // Write-protected by lock
   int _count;                  // Protected by lock
 } ASRecursiveUnfairLock;
 
 /**
  * Lock, blocking if needed.
  */
-ASDK_EXTERN OS_UNFAIR_LOCK_AVAILABILITY
+AS_EXTERN OS_UNFAIR_LOCK_AVAILABILITY
 void ASRecursiveUnfairLockLock(ASRecursiveUnfairLock *l);
 
 /**
  * Try to lock without blocking. Returns whether we took the lock.
  */
-ASDK_EXTERN OS_UNFAIR_LOCK_AVAILABILITY
+AS_EXTERN OS_UNFAIR_LOCK_AVAILABILITY
 BOOL ASRecursiveUnfairLockTryLock(ASRecursiveUnfairLock *l);
 
 /**
@@ -41,7 +42,7 @@ BOOL ASRecursiveUnfairLockTryLock(ASRecursiveUnfairLock *l);
  * the lock will result in an assertion failure, and undefined
  * behavior if foundation assertions are disabled.
  */
-ASDK_EXTERN OS_UNFAIR_LOCK_AVAILABILITY
+AS_EXTERN OS_UNFAIR_LOCK_AVAILABILITY
 void ASRecursiveUnfairLockUnlock(ASRecursiveUnfairLock *l);
 
 NS_ASSUME_NONNULL_END

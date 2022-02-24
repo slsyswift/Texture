@@ -7,24 +7,19 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
+#import <UIKit/UIKit.h>
 #import <AsyncDisplayKit/ASBaseDefines.h>
 
 /** The direction children are stacked in */
-typedef NS_ENUM(unsigned char, ASStackLayoutDirection) {
+typedef NS_ENUM(NSUInteger, ASStackLayoutDirection) {
   /** Children are stacked vertically */
   ASStackLayoutDirectionVertical,
   /** Children are stacked horizontally */
   ASStackLayoutDirectionHorizontal,
-#if YOGA
-  /** Children are stacked vertically, but in reverse. Only used by Yoga spec. */
-  ASStackLayoutDirectionVerticalReverse,
-  /** Children are stacked horizontally, but in reverse. Only used by Yoga spec. */
-  ASStackLayoutDirectionHorizontalReverse,
-#endif
 };
 
 /** If no children are flexible, how should this spec justify its children in the available space? */
-typedef NS_ENUM(unsigned char, ASStackLayoutJustifyContent) {
+typedef NS_ENUM(NSUInteger, ASStackLayoutJustifyContent) {
   /**
    On overflow, children overflow out of this spec's bounds on the right/bottom side.
    On underflow, children are left/top-aligned within this spec's bounds.
@@ -42,7 +37,7 @@ typedef NS_ENUM(unsigned char, ASStackLayoutJustifyContent) {
   ASStackLayoutJustifyContentEnd,
   /**
    On overflow or if the stack has only 1 child, this value is identical to ASStackLayoutJustifyContentStart.
-   Otherwise, the starting edge of the first child is at the starting edge of the stack, 
+   Otherwise, the starting edge of the first child is at the starting edge of the stack,
    the ending edge of the last child is at the ending edge of the stack, and the remaining children
    are distributed so that the spacing between any two adjacent ones is the same.
    If there is a remaining space after spacing division, it is combined with the last spacing (i.e the one between the last 2 children).
@@ -58,7 +53,7 @@ typedef NS_ENUM(unsigned char, ASStackLayoutJustifyContent) {
 };
 
 /** Orientation of children along cross axis */
-typedef NS_ENUM(unsigned char, ASStackLayoutAlignItems) {
+typedef NS_ENUM(NSUInteger, ASStackLayoutAlignItems) {
   /** Align children to start of cross axis */
   ASStackLayoutAlignItemsStart,
   /** Align children with end of cross axis */
@@ -78,7 +73,7 @@ typedef NS_ENUM(unsigned char, ASStackLayoutAlignItems) {
  Each child may override their parent stack's cross axis alignment.
  @see ASStackLayoutAlignItems
  */
-typedef NS_ENUM(unsigned char, ASStackLayoutAlignSelf) {
+typedef NS_ENUM(NSUInteger, ASStackLayoutAlignSelf) {
   /** Inherit alignment value from containing stack. */
   ASStackLayoutAlignSelfAuto,
   /** Align to start of cross axis */
@@ -92,13 +87,13 @@ typedef NS_ENUM(unsigned char, ASStackLayoutAlignSelf) {
 };
 
 /** Whether children are stacked into a single or multiple lines. */
-typedef NS_ENUM(unsigned char, ASStackLayoutFlexWrap) {
+typedef NS_ENUM(NSUInteger, ASStackLayoutFlexWrap) {
   ASStackLayoutFlexWrapNoWrap,
   ASStackLayoutFlexWrapWrap,
 };
 
 /** Orientation of lines along cross axis if there are multiple lines. */
-typedef NS_ENUM(unsigned char, ASStackLayoutAlignContent) {
+typedef NS_ENUM(NSUInteger, ASStackLayoutAlignContent) {
   ASStackLayoutAlignContentStart,
   ASStackLayoutAlignContentCenter,
   ASStackLayoutAlignContentEnd,
@@ -108,7 +103,7 @@ typedef NS_ENUM(unsigned char, ASStackLayoutAlignContent) {
 };
 
 /** Orientation of children along horizontal axis */
-typedef NS_ENUM(unsigned char, ASHorizontalAlignment) {
+typedef NS_ENUM(NSUInteger, ASHorizontalAlignment) {
   /** No alignment specified. Default value */
   ASHorizontalAlignmentNone,
   /** Left aligned */
@@ -128,7 +123,7 @@ typedef NS_ENUM(unsigned char, ASHorizontalAlignment) {
 };
 
 /** Orientation of children along vertical axis */
-typedef NS_ENUM(unsigned char, ASVerticalAlignment) {
+typedef NS_ENUM(NSUInteger, ASVerticalAlignment) {
   /** No alignment specified. Default value */
   ASVerticalAlignmentNone,
   /** Top aligned */

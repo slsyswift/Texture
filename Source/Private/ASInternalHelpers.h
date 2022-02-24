@@ -7,53 +7,50 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import "ASAvailability.h"
+#import <AsyncDisplayKit/ASAvailability.h>
 
 #import <UIKit/UIKit.h>
 
 #import <AsyncDisplayKit/ASBaseDefines.h>
 #import <AsyncDisplayKit/ASDisplayNodeExtras.h>
-#import <AsyncDisplayKit/ASImageProtocols.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
-ASDK_EXTERN void ASInitializeFrameworkMainThreadOnConstructor(void);
-ASDK_EXTERN void ASInitializeFrameworkMainThreadOnDestructor(void);
+AS_EXTERN void ASInitializeFrameworkMainThread(void);
 
-// Calls both ASInitializeFrameworkMainThreadOnConstructor and ASInitializeFrameworkMainThreadOnDestructor
-// Used when manually initializing texture
-ASDK_EXTERN void ASInitializeFrameworkMainThread(void);
+AS_EXTERN BOOL ASDefaultAllowsGroupOpacity(void);
+AS_EXTERN BOOL ASDefaultAllowsEdgeAntialiasing(void);
 
-ASDK_EXTERN BOOL ASDefaultAllowsGroupOpacity(void);
-ASDK_EXTERN BOOL ASDefaultAllowsEdgeAntialiasing(void);
-
-ASDK_EXTERN BOOL ASSubclassOverridesSelector(Class superclass, Class subclass, SEL selector);
-ASDK_EXTERN BOOL ASSubclassOverridesClassSelector(Class superclass, Class subclass, SEL selector);
+AS_EXTERN BOOL ASSubclassOverridesSelector(Class superclass, Class subclass, SEL selector);
+AS_EXTERN BOOL ASSubclassOverridesClassSelector(Class superclass, Class subclass, SEL selector);
 
 /// Replace a method from the given class with a block and returns the original method IMP
-ASDK_EXTERN IMP ASReplaceMethodWithBlock(Class c, SEL origSEL, id block);
+AS_EXTERN IMP ASReplaceMethodWithBlock(Class c, SEL origSEL, id block);
 
 /// Dispatches the given block to the main queue if not already running on the main thread
-ASDK_EXTERN void ASPerformBlockOnMainThread(void (^block)(void));
+AS_EXTERN void ASPerformBlockOnMainThread(void (^block)(void));
 
 /// Dispatches the given block to a background queue with priority of DISPATCH_QUEUE_PRIORITY_DEFAULT if not already run on a background queue
-ASDK_EXTERN void ASPerformBlockOnBackgroundThread(void (^block)(void)); // DISPATCH_QUEUE_PRIORITY_DEFAULT
+AS_EXTERN void ASPerformBlockOnBackgroundThread(void (^block)(void)); // DISPATCH_QUEUE_PRIORITY_DEFAULT
 
-ASDK_EXTERN CGFloat ASScreenScale(void);
+/// For deallocation of objects on a background thread without GCD overhead / thread explosion
+AS_EXTERN void ASPerformBackgroundDeallocation(id __strong _Nullable * _Nonnull object);
 
-ASDK_EXTERN CGSize ASFloorSizeValues(CGSize s);
+AS_EXTERN CGFloat ASScreenScale(void);
 
-ASDK_EXTERN CGFloat ASFloorPixelValue(CGFloat f);
+AS_EXTERN CGSize ASFloorSizeValues(CGSize s);
 
-ASDK_EXTERN CGPoint ASCeilPointValues(CGPoint p);
+AS_EXTERN CGFloat ASFloorPixelValue(CGFloat f);
 
-ASDK_EXTERN CGSize ASCeilSizeValues(CGSize s);
+AS_EXTERN CGPoint ASCeilPointValues(CGPoint p);
 
-ASDK_EXTERN CGFloat ASCeilPixelValue(CGFloat f);
+AS_EXTERN CGSize ASCeilSizeValues(CGSize s);
 
-ASDK_EXTERN CGFloat ASRoundPixelValue(CGFloat f);
+AS_EXTERN CGFloat ASCeilPixelValue(CGFloat f);
 
-ASDK_EXTERN Class _Nullable ASGetClassFromType(const char * _Nullable type);
+AS_EXTERN CGFloat ASRoundPixelValue(CGFloat f);
+
+AS_EXTERN Class _Nullable ASGetClassFromType(const char * _Nullable type);
 
 ASDISPLAYNODE_INLINE BOOL ASImageAlphaInfoIsOpaque(CGImageAlphaInfo info) {
   switch (info) {
@@ -99,30 +96,9 @@ ASDISPLAYNODE_INLINE UIEdgeInsets ASConcatInsets(UIEdgeInsets insetsA, UIEdgeIns
   return insetsA;
 }
 
-ASDISPLAYNODE_INLINE AS_WARN_UNUSED_RESULT ASImageDownloaderPriority ASImageDownloaderPriorityWithInterfaceState(ASInterfaceState interfaceState) {
-  if (ASInterfaceStateIncludesVisible(interfaceState)) {
-    return ASImageDownloaderPriorityVisible;
-  }
-
-  if (ASInterfaceStateIncludesDisplay(interfaceState)) {
-    return ASImageDownloaderPriorityImminent;
-  }
-
-  if (ASInterfaceStateIncludesPreload(interfaceState)) {
-    return ASImageDownloaderPriorityPreload;
-  }
-
-  return ASImageDownloaderPriorityPreload;
-}
-
 @interface NSIndexPath (ASInverseComparison)
 - (NSComparisonResult)asdk_inverseCompare:(NSIndexPath *)otherIndexPath;
 @end
-
-/**
- * Create an NSMutableSet that uses pointers for hash & equality.
- */
-ASDK_EXTERN NSMutableSet *ASCreatePointerBasedMutableSet(void);
 
 NS_ASSUME_NONNULL_END
 

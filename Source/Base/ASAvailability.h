@@ -11,11 +11,7 @@
 
 #pragma once
 
-#ifdef __i386__
-  #define AS_TLS_AVAILABLE 0
-#else
-  #define AS_TLS_AVAILABLE 1
-#endif
+#define AS_TLS_AVAILABLE 0
 
 #ifndef AS_ENABLE_TEXTNODE
   #define AS_ENABLE_TEXTNODE 1 // Enable old TextNode by default
@@ -50,13 +46,8 @@
   #define __IPHONE_11_0 110000
 #endif
 
-#ifndef __IPHONE_13_0
-  #define __IPHONE_13_0 130000
-#endif
-
 #define AS_AT_LEAST_IOS10  (kCFCoreFoundationVersionNumber >= kCFCoreFoundationVersionNumber_iOS_10_0)
 #define AS_AT_LEAST_IOS11  (kCFCoreFoundationVersionNumber >= kCFCoreFoundationVersionNumber_iOS_11_0)
-#define AS_AT_LEAST_IOS13  (__IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_13_0)
 
 // Use __builtin_available if we're on Xcode >= 9, AS_AT_LEAST otherwise.
 #if __has_builtin(__builtin_available)
@@ -86,7 +77,6 @@
 
 #define AS_PIN_REMOTE_IMAGE __has_include(<PINRemoteImage/PINRemoteImage.h>)
 #define AS_IG_LIST_KIT __has_include(<IGListKit/IGListKit.h>)
-#define AS_IG_LIST_DIFF_KIT __has_include(<IGListDiffKit/IGListDiffKit.h>)
 
 /**
  * For IGListKit versions < 3.0, you have to use IGListCollectionView.

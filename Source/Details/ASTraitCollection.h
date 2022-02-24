@@ -40,53 +40,43 @@ typedef struct {
   UIUserInterfaceIdiom userInterfaceIdiom;
   UIForceTouchCapability forceTouchCapability;
   UITraitEnvironmentLayoutDirection layoutDirection API_AVAILABLE(ios(10.0));
+#if AS_BUILD_UIUSERINTERFACESTYLE
   UIUserInterfaceStyle userInterfaceStyle API_AVAILABLE(tvos(10.0), ios(12.0));
-
+#endif
 
   // NOTE: This must be a constant. We will assert.
   unowned UIContentSizeCategory preferredContentSizeCategory API_AVAILABLE(ios(10.0));
 
   CGSize containerSize;
-
-#if TARGET_OS_IOS
-  UIUserInterfaceLevel userInterfaceLevel API_AVAILABLE(ios(13.0)) API_UNAVAILABLE(tvos);
-#endif
-  UIAccessibilityContrast accessibilityContrast API_AVAILABLE(ios(13.0));
-  UILegibilityWeight legibilityWeight API_AVAILABLE(ios(13.0));
 } ASPrimitiveTraitCollection;
 #pragma clang diagnostic pop
 
 /**
  * Creates ASPrimitiveTraitCollection with default values.
  */
-ASDK_EXTERN ASPrimitiveTraitCollection ASPrimitiveTraitCollectionMakeDefault(void);
+AS_EXTERN ASPrimitiveTraitCollection ASPrimitiveTraitCollectionMakeDefault(void);
 
 /**
  * Creates a ASPrimitiveTraitCollection from a given UITraitCollection.
  */
-ASDK_EXTERN ASPrimitiveTraitCollection ASPrimitiveTraitCollectionFromUITraitCollection(UITraitCollection *traitCollection);
-
-/**
- * Creates a UITraitCollection from a given ASPrimitiveTraitCollection.
- */
-ASDK_EXTERN UITraitCollection * ASPrimitiveTraitCollectionToUITraitCollection(ASPrimitiveTraitCollection traitCollection);
+AS_EXTERN ASPrimitiveTraitCollection ASPrimitiveTraitCollectionFromUITraitCollection(UITraitCollection *traitCollection);
 
 
 /**
  * Compares two ASPrimitiveTraitCollection to determine if they are the same.
  */
-ASDK_EXTERN BOOL ASPrimitiveTraitCollectionIsEqualToASPrimitiveTraitCollection(ASPrimitiveTraitCollection lhs, ASPrimitiveTraitCollection rhs);
+AS_EXTERN BOOL ASPrimitiveTraitCollectionIsEqualToASPrimitiveTraitCollection(ASPrimitiveTraitCollection lhs, ASPrimitiveTraitCollection rhs);
 
 /**
  * Returns a string representation of a ASPrimitiveTraitCollection.
  */
-ASDK_EXTERN NSString *NSStringFromASPrimitiveTraitCollection(ASPrimitiveTraitCollection traits);
+AS_EXTERN NSString *NSStringFromASPrimitiveTraitCollection(ASPrimitiveTraitCollection traits);
 
 /**
  * This function will walk the layout element hierarchy and updates the layout element trait collection for every
  * layout element within the hierarchy.
  */
-ASDK_EXTERN void ASTraitCollectionPropagateDown(id<ASLayoutElement> element, ASPrimitiveTraitCollection traitCollection);
+AS_EXTERN void ASTraitCollectionPropagateDown(id<ASLayoutElement> element, ASPrimitiveTraitCollection traitCollection);
 
 /**
  * Abstraction on top of UITraitCollection for propagation within AsyncDisplayKit-Layout
@@ -105,7 +95,7 @@ ASDK_EXTERN void ASTraitCollectionPropagateDown(id<ASLayoutElement> element, ASP
  * @abstract Sets a trait collection on this environment state.
  *
  * @discussion This only exists as an internal convenience method. Users should not override trait collection using it.
- * Use [ASDKViewController overrideDisplayTraitsWithTraitCollection] block instead.
+ * Use [ASViewController overrideDisplayTraitsWithTraitCollection] block instead.
  */
 - (void)setPrimitiveTraitCollection:(ASPrimitiveTraitCollection)traitCollection;
 
@@ -115,6 +105,16 @@ ASDK_EXTERN void ASTraitCollectionPropagateDown(id<ASLayoutElement> element, ASP
 - (ASTraitCollection *)asyncTraitCollection;
 
 @end
+
+#define ASPrimitiveTraitCollectionDefaults \
+- (ASPrimitiveTraitCollection)primitiveTraitCollection\
+{\
+  return _primitiveTraitCollection.load();\
+}\
+- (void)setPrimitiveTraitCollection:(ASPrimitiveTraitCollection)traitCollection\
+{\
+  _primitiveTraitCollection = traitCollection;\
+}\
 
 #define ASLayoutElementCollectionTableSetTraitCollection(lock) \
 - (void)setPrimitiveTraitCollection:(ASPrimitiveTraitCollection)traitCollection\
@@ -149,17 +149,12 @@ AS_SUBCLASSING_RESTRICTED
 @property (readonly) UIUserInterfaceIdiom userInterfaceIdiom;
 @property (readonly) UIForceTouchCapability forceTouchCapability;
 @property (readonly) UITraitEnvironmentLayoutDirection layoutDirection API_AVAILABLE(ios(10.0));
+#if AS_BUILD_UIUSERINTERFACESTYLE
 @property (readonly) UIUserInterfaceStyle userInterfaceStyle API_AVAILABLE(tvos(10.0), ios(12.0));
+#endif
 @property (readonly) UIContentSizeCategory preferredContentSizeCategory  API_AVAILABLE(ios(10.0));
 
 @property (readonly) CGSize containerSize;
-
-#if TARGET_OS_IOS
-@property (readonly) UIUserInterfaceLevel userInterfaceLevel API_AVAILABLE(ios(13.0)) API_UNAVAILABLE(tvos);
-#endif
-
-@property (readonly) UIAccessibilityContrast accessibilityContrast API_AVAILABLE(ios(13.0));
-@property (readonly) UILegibilityWeight legibilityWeight API_AVAILABLE(ios(13.0));
 
 - (BOOL)isEqualToTraitCollection:(ASTraitCollection *)traitCollection;
 

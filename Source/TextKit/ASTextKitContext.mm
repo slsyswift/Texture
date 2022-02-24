@@ -7,12 +7,14 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <AsyncDisplayKit/ASTextKitContext.h>
+#import "ASTextKitContext.h"
 
 #if AS_ENABLE_TEXTNODE
 
-#import <AsyncDisplayKit/ASLayoutManager.h>
+#import "ASLayoutManager.h"
 #import <AsyncDisplayKit/ASThread.h>
+
+#include <memory>
 
 @implementation ASTextKitContext
 {
@@ -25,7 +27,6 @@
 }
 
 - (instancetype)initWithAttributedString:(NSAttributedString *)attributedString
-                               tintColor:(UIColor *)tintColor
                            lineBreakMode:(NSLineBreakMode)lineBreakMode
                     maximumNumberOfLines:(NSUInteger)maximumNumberOfLines
                           exclusionPaths:(NSArray *)exclusionPaths
@@ -33,23 +34,19 @@
 
 {
   if (self = [super init]) {
-    static AS::Mutex *mutex = NULL;
     static dispatch_once_t onceToken;
+    static AS::Mutex *mutex;
+    dispatch_once(&onceToken, ^{
+      mutex = new AS::Mutex();
+    });
     
-    BOOL useGlobalTextKitLock = !ASActivateExperimentalFeature(ASExperimentalDisableGlobalTextkitLock);
-    if (useGlobalTextKitLock) {
-        // Concurrently initialising TextKit components crashes (rdar://18448377) so we use a global lock.
-        dispatch_once(&onceToken, ^{
-            mutex = new AS::Mutex();
-        });
-        if (mutex != NULL) {
-          mutex->lock();
-        }
-    }
+    // Concurrently initialising TextKit components crashes (rdar://18448377) so we use a global lock.
+    AS::MutexLocker l(*mutex);
     
     __instanceLock__ = std::make_shared<AS::Mutex>();
     
     // Create the TextKit component stack with our default configuration.
+    
     _textStorage = [[NSTextStorage alloc] init];
     _layoutManager = [[ASLayoutManager alloc] init];
     _layoutManager.usesFontLeading = NO;
@@ -57,19 +54,8 @@
     
     // Instead of calling [NSTextStorage initWithAttributedString:], setting attributedString just after calling addlayoutManager can fix CJK language layout issues.
     // See https://github.com/facebook/AsyncDisplayKit/issues/2894
-    if (attributedString && attributedString.length > 0) {
+    if (attributedString) {
       [_textStorage setAttributedString:attributedString];
-
-      // Apply tint color if specified and if foreground color is undefined for attributedString
-      NSRange limit = NSMakeRange(0, attributedString.length);
-      // Look for previous attributes that define foreground color
-      UIColor *attributeValue = (UIColor *)[attributedString attribute:NSForegroundColorAttributeName atIndex:limit.location effectiveRange:NULL];
-      if (attributeValue == nil) {
-        // None are found, apply tint color if available. Fallback to "black" text color
-        if (tintColor) {
-          [_textStorage addAttributes:@{ NSForegroundColorAttributeName : tintColor } range:limit];
-        }
-      }
     }
     
     _textContainer = [[NSTextContainer alloc] initWithSize:constrainedSize];
@@ -79,10 +65,6 @@
     _textContainer.maximumNumberOfLines = maximumNumberOfLines;
     _textContainer.exclusionPaths = exclusionPaths;
     [_layoutManager addTextContainer:_textContainer];
-    
-    if (useGlobalTextKitLock && mutex != NULL) {
-      mutex->unlock();
-    }
   }
   return self;
 }

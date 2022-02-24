@@ -7,10 +7,10 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
+#import <UIKit/UIKit.h>
 #import <AsyncDisplayKit/ASBlockTypes.h>
 #import <AsyncDisplayKit/ASDisplayNode.h>
 #import <AsyncDisplayKit/ASDisplayNode+LayoutSpec.h>
-#import <AsyncDisplayKit/ASTraitCollection.h>
 
 @class ASLayoutSpec, _ASDisplayLayer;
 
@@ -44,14 +44,14 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  * @abstract Return the calculated layout.
  *
- * @discussion For node subclasses that implement manual layout (e.g., they have a custom -layout method), 
- * calculatedLayout may be accessed on subnodes to retrieved cached information about their size.  
- * This allows -layout to be very fast, saving time on the main thread.  
+ * @discussion For node subclasses that implement manual layout (e.g., they have a custom -layout method),
+ * calculatedLayout may be accessed on subnodes to retrieved cached information about their size.
+ * This allows -layout to be very fast, saving time on the main thread.
  * Note: .calculatedLayout will only be set for nodes that have had -layoutThatFits: called on them.
  * For manual layout, make sure you call -layoutThatFits: in your implementation of -calculateSizeThatFits:.
  *
- * For node subclasses that use automatic layout (e.g., they implement -layoutSpecThatFits:), 
- * it is typically not necessary to use .calculatedLayout at any point.  For these nodes, 
+ * For node subclasses that use automatic layout (e.g., they implement -layoutSpecThatFits:),
+ * it is typically not necessary to use .calculatedLayout at any point.  For these nodes,
  * the ASLayoutSpec implementation will automatically call -layoutThatFits: on all of the subnodes,
  * and the ASDisplayNode base class implementation of -layout will automatically make use of .calculatedLayout on the subnodes.
  *
@@ -126,7 +126,7 @@ AS_CATEGORY_IMPLEMENTABLE
  *
  * @return An ASLayout instance defining the layout of the receiver (and its children, if the box layout model is used).
  *
- * @discussion This method is called on a non-main thread. The default implementation calls either -layoutSpecThatFits: 
+ * @discussion This method is called on a non-main thread. The default implementation calls either -layoutSpecThatFits:
  * or -calculateSizeThatFits:, whichever method is overriden. Subclasses rarely need to override this method,
  * override -layoutSpecThatFits: or -calculateSizeThatFits: instead.
  *
@@ -205,11 +205,9 @@ AS_CATEGORY_IMPLEMENTABLE
  * @abstract Called when the node's ASTraitCollection changes
  *
  * @discussion Subclasses can override this method to react to a trait collection change.
- *
- * @param previousTraitCollection The ASPrimitiveTraitCollection object before the interface environment changed.
  */
 AS_CATEGORY_IMPLEMENTABLE
-- (void)asyncTraitCollectionDidChangeWithPreviousTraitCollection:(ASPrimitiveTraitCollection)previousTraitCollection ASDISPLAYNODE_REQUIRES_SUPER;
+- (void)asyncTraitCollectionDidChange;
 
 #pragma mark - Drawing
 /** @name Drawing */
@@ -228,9 +226,9 @@ AS_CATEGORY_IMPLEMENTABLE
  *
  * @note Called on the display queue and/or main queue (MUST BE THREAD SAFE)
  */
-+ (void)drawRect:(CGRect)bounds withParameters:(nullable id)parameters
+/*+ (void)drawRect:(CGRect)bounds withParameters:(nullable id)parameters
                                    isCancelled:(AS_NOESCAPE asdisplaynode_iscancelled_block_t)isCancelledBlock
-                                 isRasterizing:(BOOL)isRasterizing;
+                                 isRasterizing:(BOOL)isRasterizing;*/
 
 /**
  * @summary Delegate override to provide new layer contents as a UIImage.
@@ -379,13 +377,6 @@ AS_CATEGORY_IMPLEMENTABLE
  */
 @property (readonly) CGFloat contentsScaleForDisplay;
 
-/**
- * Called as part of actionForLayer:forKey:. Gives the node a chance to provide a custom action for its layer.
- *
- * The default implementation returns NSNull, indicating that no action should be taken.
- */
-AS_CATEGORY_IMPLEMENTABLE
-- (nullable id<CAAction>)layerActionForKey:(NSString *)event;
 
 #pragma mark - Touch handling
 /** @name Touch handling */

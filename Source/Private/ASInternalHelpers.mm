@@ -9,9 +9,13 @@
 
 #import <AsyncDisplayKit/ASInternalHelpers.h>
 
+#import <UIKit/UIKit.h>
+
+#import <objc/runtime.h>
+#import <cmath>
+
 #import <AsyncDisplayKit/ASConfigurationInternal.h>
 #import <AsyncDisplayKit/ASRunLoopQueue.h>
-#import <AsyncDisplayKit/ASSignpost.h>
 #import <AsyncDisplayKit/ASThread.h>
 
 static NSNumber *allowsGroupOpacityFromUIKitOrNil;
@@ -39,41 +43,7 @@ BOOL ASDefaultAllowsEdgeAntialiasing()
   return edgeAntialiasing;
 }
 
-#if AS_SIGNPOST_ENABLE
-void _ASInitializeSignpostObservers(void)
-{
-  // Orientation changes. Unavailable on tvOS.
-#if !TARGET_OS_TV
-  [NSNotificationCenter.defaultCenter addObserverForName:UIApplicationWillChangeStatusBarOrientationNotification object:nil queue:nil usingBlock:^(NSNotification *note) {
-    UIInterfaceOrientation orientation = (UIInterfaceOrientation)[note.userInfo[UIApplicationStatusBarOrientationUserInfoKey] integerValue];
-    ASSignpostStart(OrientationChange, (id)nil, "from %s", UIInterfaceOrientationIsPortrait(orientation) ? "portrait" : "landscape");
-    [CATransaction begin];
-  }];
-  [NSNotificationCenter.defaultCenter addObserverForName:UIApplicationDidChangeStatusBarOrientationNotification object:nil queue:nil usingBlock:^(NSNotification *note) {
-    // When profiling, go ahead and commit the transaction early so that it happens as part of our interval.
-    UIInterfaceOrientation orientation = (UIInterfaceOrientation)[note.userInfo[UIApplicationStatusBarOrientationUserInfoKey] integerValue];
-    [CATransaction setCompletionBlock:^{
-      ASSignpostEnd(OrientationChange, (id)nil, "to %s", UIInterfaceOrientationIsPortrait(orientation) ? "portrait" : "landscape");
-    }];
-    [CATransaction commit];
-  }];
-#endif  // TARGET_OS_TV
-}
-#endif  // AS_SIGNPOST_ENABLE
-
-void ASInitializeFrameworkMainThreadOnConstructor(void)
-{
-  static dispatch_once_t onceToken;
-  dispatch_once(&onceToken, ^{
-    ASDisplayNodeCAssertMainThread();
-    ASNotifyInitialized();
-#if AS_SIGNPOST_ENABLE
-    _ASInitializeSignpostObservers();
-#endif
-  });
-}
-
-void ASInitializeFrameworkMainThreadOnDestructor(void)
+void ASInitializeFrameworkMainThread(void)
 {
   static dispatch_once_t onceToken;
   dispatch_once(&onceToken, ^{
@@ -86,13 +56,8 @@ void ASInitializeFrameworkMainThreadOnDestructor(void)
       allowsGroupOpacityFromUIKitOrNil = @(layer.allowsGroupOpacity);
       allowsEdgeAntialiasingFromUIKitOrNil = @(layer.allowsEdgeAntialiasing);
     }
+    ASNotifyInitialized();
   });
-}
-
-ASDK_EXTERN void ASInitializeFrameworkMainThread(void)
-{
-  ASInitializeFrameworkMainThreadOnConstructor();
-  ASInitializeFrameworkMainThreadOnDestructor();
 }
 
 BOOL ASSubclassOverridesSelector(Class superclass, Class subclass, SEL selector)
@@ -152,6 +117,11 @@ void ASPerformBlockOnBackgroundThread(void (^block)(void))
   } else {
     block();
   }
+}
+
+void ASPerformBackgroundDeallocation(id __strong _Nullable * _Nonnull object)
+{
+  [[ASDeallocQueue sharedDeallocationQueue] releaseObjectInBackground:object];
 }
 
 Class _Nullable ASGetClassFromType(const char  * _Nullable type)
@@ -261,15 +231,3 @@ CGFloat ASRoundPixelValue(CGFloat f)
 }
 
 @end
-
-NSMutableSet *ASCreatePointerBasedMutableSet()
-{
-  static CFSetCallBacks callbacks;
-  static dispatch_once_t onceToken;
-  dispatch_once(&onceToken, ^{
-    callbacks = kCFTypeSetCallBacks;
-    callbacks.equal = nullptr;
-    callbacks.hash = nullptr;
-  });
-  return (__bridge_transfer NSMutableSet *)CFSetCreateMutable(NULL, 0, &callbacks);
-}

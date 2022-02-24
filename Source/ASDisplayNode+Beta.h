@@ -7,25 +7,31 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
+#import <UIKit/UIKit.h>
 #import <AsyncDisplayKit/ASAvailability.h>
 #import <AsyncDisplayKit/ASDisplayNode.h>
-#import <AsyncDisplayKit/ASLayoutRangeType.h>
-
-#if YOGA
-  #import YOGA_HEADER_PATH
-  #import <AsyncDisplayKit/ASYogaUtilities.h>
-  #import <AsyncDisplayKit/ASDisplayNode+Yoga.h>
-#endif
 
 NS_ASSUME_NONNULL_BEGIN
 
-ASDK_EXTERN void ASPerformBlockOnMainThread(void (^block)(void));
-ASDK_EXTERN void ASPerformBlockOnBackgroundThread(void (^block)(void)); // DISPATCH_QUEUE_PRIORITY_DEFAULT
+AS_EXTERN void ASPerformBlockOnMainThread(void (^block)(void));
+AS_EXTERN void ASPerformBlockOnBackgroundThread(void (^block)(void)); // DISPATCH_QUEUE_PRIORITY_DEFAULT
+
+#if ASEVENTLOG_ENABLE
+  #define ASDisplayNodeLogEvent(node, ...) [node.eventLog logEventWithBacktrace:(AS_SAVE_EVENT_BACKTRACES ? [NSThread callStackSymbols] : nil) format:__VA_ARGS__]
+#else
+  #define ASDisplayNodeLogEvent(node, ...)
+#endif
+
+#if ASEVENTLOG_ENABLE
+  #define ASDisplayNodeGetEventLog(node) node.eventLog
+#else
+  #define ASDisplayNodeGetEventLog(node) nil
+#endif
 
 /**
  * Bitmask to indicate what performance measurements the cell should record.
  */
-typedef NS_OPTIONS(unsigned char, ASDisplayNodePerformanceMeasurementOptions) {
+typedef NS_OPTIONS(NSUInteger, ASDisplayNodePerformanceMeasurementOptions) {
   ASDisplayNodePerformanceMeasurementOptionLayoutSpec = 1 << 0,
   ASDisplayNodePerformanceMeasurementOptionLayoutComputation = 1 << 1
 };
@@ -83,6 +89,13 @@ typedef struct {
  */
 @property (readonly) ASDisplayNodePerformanceMeasurements performanceMeasurements;
 
+#if ASEVENTLOG_ENABLE
+/*
+ * @abstract The primitive event tracing object. You shouldn't directly use it to log event. Use the ASDisplayNodeLogEvent macro instead.
+ */
+@property (nonatomic, readonly) ASEventLog *eventLog;
+#endif
+
 /**
  * @abstract Whether this node acts as an accessibility container. If set to YES, then this node's accessibility label will represent
  * an aggregation of all child nodes' accessibility labels. Nodes in this node's subtree that are also accessibility containers will
@@ -131,15 +144,6 @@ AS_CATEGORY_IMPLEMENTABLE
  */
 AS_CATEGORY_IMPLEMENTABLE
 - (void)willCalculateLayout:(ASSizeRange)constrainedSize NS_REQUIRES_SUPER;
-
-/**
- * Only ASLayoutRangeModeVisibleOnly or ASLayoutRangeModeLowMemory are recommended.  Default is ASLayoutRangeModeVisibleOnly,
- * because this is the only way to ensure an application will not have blank / flashing views as the user navigates back after
- * a memory warning.  Apps that wish to use the more effective / aggressive ASLayoutRangeModeLowMemory may need to take steps
- * to mitigate this behavior, including: restoring a larger range mode to the next controller before the user navigates there,
- * enabling .neverShowPlaceholders on ASCellNodes so that the navigation operation is blocked on redisplay completing, etc.
- */
-+ (void)setRangeModeForMemoryWarnings:(ASLayoutRangeMode)rangeMode;
 
 /**
  * @abstract Whether to draw all descendent nodes' contents into this node's layer's backing store.

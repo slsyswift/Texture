@@ -9,20 +9,41 @@
 
 #import <AsyncDisplayKit/_ASDisplayLayer.h>
 
+#import <objc/runtime.h>
+
 #import <AsyncDisplayKit/_ASAsyncTransactionContainer.h>
 #import <AsyncDisplayKit/ASAssert.h>
 #import <AsyncDisplayKit/ASDisplayNode.h>
-#import <AsyncDisplayKit/ASDisplayNodeInternal.h>
-#import <AsyncDisplayKit/ASInternalHelpers.h>
+#import "ASDisplayNodeInternal.h"
+#import <AsyncDisplayKit/ASDisplayNode+FrameworkPrivate.h>
+#import <AsyncDisplayKit/ASObjectDescriptionHelpers.h>
 
 @implementation _ASDisplayLayer
 {
   BOOL _attemptedDisplayWhileZeroSized;
+
+  struct {
+    BOOL delegateDidChangeBounds:1;
+  } _delegateFlags;
 }
 
 @dynamic displaysAsynchronously;
 
+#ifdef DEBUG
+- (void)dealloc {
+  if (![NSThread isMainThread]) {
+    assert(true);
+  }
+}
+#endif
+
 #pragma mark - Properties
+
+- (void)setDelegate:(id)delegate
+{
+  [super setDelegate:delegate];
+  _delegateFlags.delegateDidChangeBounds = [delegate respondsToSelector:@selector(layer:didChangeBoundsWithOldValue:newValue:)];
+}
 
 - (void)setDisplaySuspended:(BOOL)displaySuspended
 {
@@ -45,11 +66,12 @@
   if (!valid) {
     return;
   }
-  if ([self.delegate respondsToSelector:@selector(layer:didChangeBoundsWithOldValue:newValue:)]) {
+  if (_delegateFlags.delegateDidChangeBounds) {
     CGRect oldBounds = self.bounds;
     [super setBounds:bounds];
     self.asyncdisplaykit_node.threadSafeBounds = bounds;
     [(id<ASCALayerExtendedDelegate>)self.delegate layer:self didChangeBoundsWithOldValue:oldBounds newValue:bounds];
+    
   } else {
     [super setBounds:bounds];
     self.asyncdisplaykit_node.threadSafeBounds = bounds;
@@ -71,7 +93,6 @@
 - (void)setNeedsLayout
 {
   ASDisplayNodeAssertMainThread();
-  as_log_verbose(ASNodeLog(), "%s on %@", sel_getName(_cmd), self);
   [super setNeedsLayout];
 }
 #endif
@@ -100,13 +121,6 @@
 
 #pragma mark -
 
-+ (id<CAAction>)defaultActionForKey:(NSString *)event
-{
-  // We never want to run one of CA's root default actions. So if we return nil from actionForLayer:forKey:, and let CA
-  // dig into the actions dictionary, and it doesn't find it there, it will check here and we need to stop the search.
-  return (id)kCFNull;
-}
-
 + (dispatch_queue_t)displayQueue
 {
   static dispatch_queue_t displayQueue = NULL;
@@ -126,8 +140,6 @@
     return @YES;
   } else if ([key isEqualToString:@"opaque"]) {
     return @YES;
-  } else if ([key isEqualToString:@"contentsScale"]) {
-    return @(ASScreenScale());
   } else {
     return [super defaultValueForKey:key];
   }

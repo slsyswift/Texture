@@ -8,9 +8,22 @@
 //
 
 #import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
 
-#define ASDK_EXTERN FOUNDATION_EXTERN
+#define AS_EXTERN FOUNDATION_EXTERN
 #define unowned __unsafe_unretained
+
+/**
+ * Hack to support building for iOS with Xcode 9. UIUserInterfaceStyle was previously tvOS-only,
+ * and it was added to iOS 12. Xcode 9 (iOS 11 SDK) will flat-out refuse to build anything that
+ * references this enum targeting iOS, even if it's guarded with the right availability macros,
+ * because it thinks the entire platform isn't compatible with the enum.
+ */
+#if TARGET_OS_TV || (defined(__IPHONE_12_0) && __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_12_0)
+#define AS_BUILD_UIUSERINTERFACESTYLE 1
+#else
+#define AS_BUILD_UIUSERINTERFACESTYLE 0
+#endif
 
 /**
  * Decorates methods that clients can implement in categories on our base class. These methods
@@ -59,6 +72,17 @@
 
 #ifndef AS_ENABLE_TIPS
 #define AS_ENABLE_TIPS 0
+#endif
+
+/**
+ * The event backtraces take a static 2KB of memory
+ * and retain all objects present in all the registers
+ * of the stack frames. The memory consumption impact
+ * is too significant even to be enabled during general
+ * development.
+ */
+#ifndef AS_SAVE_EVENT_BACKTRACES
+# define AS_SAVE_EVENT_BACKTRACES 0
 #endif
 
 #ifndef __has_feature      // Optional.
@@ -111,8 +135,6 @@
 
 #define ASOVERLOADABLE __attribute__((overloadable))
 
-/// Xcode >= 10.
-#define AS_HAS_OS_SIGNPOST __has_include(<os/signpost.h>)
 
 #if __has_attribute(noescape)
 #define AS_NOESCAPE __attribute__((noescape))

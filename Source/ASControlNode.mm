@@ -8,16 +8,13 @@
 //
 
 #import <AsyncDisplayKit/ASControlNode.h>
+#import "ASControlNode+Private.h"
 #import <AsyncDisplayKit/ASControlNode+Subclasses.h>
 #import <AsyncDisplayKit/ASDisplayNode+Subclasses.h>
-#import <AsyncDisplayKit/ASImageNode.h>
-#import <AsyncDisplayKit/AsyncDisplayKit+Debug.h>
+#import <AsyncDisplayKit/ASInternalHelpers.h>
 #import <AsyncDisplayKit/ASControlTargetAction.h>
 #import <AsyncDisplayKit/ASDisplayNode+FrameworkPrivate.h>
 #import <AsyncDisplayKit/ASThread.h>
-#if TARGET_OS_TV
-#import <AsyncDisplayKit/ASControlNode+Private.h>
-#endif
 
 // UIControl allows dragging some distance outside of the control itself during
 // tracking. This value depends on the device idiom (25 or 70 points), so
@@ -26,6 +23,7 @@
 
 // Initial capacities for dispatch tables.
 #define kASControlNodeEventDispatchTableInitialCapacity 4
+#define kASControlNodeActionDispatchTableInitialCapacity 4
 
 @interface ASControlNode ()
 {
@@ -73,7 +71,6 @@ CGRect _ASControlNodeGetExpandedBounds(ASControlNode *controlNode);
 
 @implementation ASControlNode
 {
-  ASImageNode *_debugHighlightOverlay;
 }
 
 #pragma mark - Lifecycle
@@ -292,20 +289,6 @@ CGRect _ASControlNodeGetExpandedBounds(ASControlNode *controlNode);
 
   if (!_controlEventDispatchTable) {
     _controlEventDispatchTable = [[NSMutableDictionary alloc] initWithCapacity:kASControlNodeEventDispatchTableInitialCapacity]; // enough to handle common types without re-hashing the dictionary when adding entries.
-    
-    // only show tap-able areas for views with 1 or more addTarget:action: pairs
-    if ([ASControlNode enableHitTestDebug] && _debugHighlightOverlay == nil) {
-      // do not use ASPerformBlockOnMainThread here, if it performs the block synchronously it will continue
-      // holding the lock while calling addSubnode.
-      dispatch_async(dispatch_get_main_queue(), ^{
-        // add a highlight overlay node with area of ASControlNode + UIEdgeInsets
-        self.clipsToBounds = NO;
-        self->_debugHighlightOverlay = [[ASImageNode alloc] init];
-        self->_debugHighlightOverlay.zPosition = 1000;  // ensure we're over the top of any siblings
-        self->_debugHighlightOverlay.layerBacked = YES;
-        [self addSubnode:self->_debugHighlightOverlay];
-      });
-    }
   }
   
   // Create new target action pair
@@ -319,7 +302,7 @@ CGRect _ASControlNodeGetExpandedBounds(ASControlNode *controlNode);
     {
       // Do we already have an event table for this control event?
       id<NSCopying> eventKey = _ASControlNodeEventKeyForControlEvent(controlEvent);
-      NSMutableArray *eventTargetActionArray = self->_controlEventDispatchTable[eventKey];
+      NSMutableArray *eventTargetActionArray = _controlEventDispatchTable[eventKey];
       
       if (!eventTargetActionArray) {
         eventTargetActionArray = [[NSMutableArray alloc] init];
@@ -332,7 +315,7 @@ CGRect _ASControlNodeGetExpandedBounds(ASControlNode *controlNode);
       [eventTargetActionArray addObject:targetAction];
       
       if (eventKey) {
-        [self->_controlEventDispatchTable setObject:eventTargetActionArray forKey:eventKey];
+        [_controlEventDispatchTable setObject:eventTargetActionArray forKey:eventKey];
       }
     });
 
@@ -393,7 +376,7 @@ CGRect _ASControlNodeGetExpandedBounds(ASControlNode *controlNode);
     {
       // Grab the dispatch table for this event (if we have it).
       id<NSCopying> eventKey = _ASControlNodeEventKeyForControlEvent(controlEvent);
-      NSMutableArray *eventTargetActionArray = self->_controlEventDispatchTable[eventKey];
+      NSMutableArray *eventTargetActionArray = _controlEventDispatchTable[eventKey];
       if (!eventTargetActionArray) {
         return;
       }
@@ -413,7 +396,7 @@ CGRect _ASControlNodeGetExpandedBounds(ASControlNode *controlNode);
       
       if (eventTargetActionArray.count == 0) {
         // If there are no targets for this event anymore, remove it.
-        [self->_controlEventDispatchTable removeObjectForKey:eventKey];
+        [_controlEventDispatchTable removeObjectForKey:eventKey];
       }
     });
 }
@@ -435,7 +418,7 @@ CGRect _ASControlNodeGetExpandedBounds(ASControlNode *controlNode);
       (ASControlNodeEvent controlEvent)
       {
         // Iterate on each target action pair
-        for (ASControlTargetAction *targetAction in self->_controlEventDispatchTable[_ASControlNodeEventKeyForControlEvent(controlEvent)]) {
+        for (ASControlTargetAction *targetAction in _controlEventDispatchTable[_ASControlNodeEventKeyForControlEvent(controlEvent)]) {
           ASControlTargetAction *resolvedTargetAction = [[ASControlTargetAction alloc] init];
           resolvedTargetAction.action = targetAction.action;
           resolvedTargetAction.target = targetAction.target;
@@ -509,8 +492,8 @@ CGRect _ASControlNodeGetExpandedBounds(ASControlNode *controlNode) {
 }
 
 #pragma mark - Debug
-- (ASImageNode *)debugHighlightOverlay
+- (ASDisplayNode *)debugHighlightOverlay
 {
-  return _debugHighlightOverlay;
+  return nil;
 }
 @end

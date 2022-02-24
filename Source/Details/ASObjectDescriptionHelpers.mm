@@ -11,7 +11,7 @@
 
 #import <UIKit/UIGeometry.h>
 
-#import <AsyncDisplayKit/NSIndexSet+ASHelpers.h>
+#import "NSIndexSet+ASHelpers.h"
 
 NSString *ASGetDescriptionValueString(id object)
 {
@@ -85,10 +85,7 @@ NSString *ASObjectDescriptionMake(__autoreleasing id object, NSArray<NSDictionar
 }
 
 NSString *ASObjectDescriptionMakeTiny(__autoreleasing id object) {
-  static constexpr int kBufSize = 64;
-  char buf[kBufSize];
-  int len = snprintf(buf, kBufSize, "<%s: %p>", object_getClassName(object), object);
-  return (__bridge_transfer NSString *)CFStringCreateWithBytes(NULL, (const UInt8 *)buf, len, kCFStringEncodingASCII, false);
+  return ASObjectDescriptionMake(object, nil);
 }
 
 NSString *ASStringWithQuotesIfMultiword(NSString *string) {

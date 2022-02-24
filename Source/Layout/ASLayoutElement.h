@@ -7,6 +7,7 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
+#import <UIKit/UIKit.h>
 #import <AsyncDisplayKit/ASLayoutElementPrivate.h>
 #import <AsyncDisplayKit/ASLayoutElementExtensibility.h>
 #import <AsyncDisplayKit/ASDimensionInternal.h>
@@ -25,13 +26,13 @@
 NS_ASSUME_NONNULL_BEGIN
 
 /** A constant that indicates that the parent's size is not yet determined in a given dimension. */
-ASDK_EXTERN CGFloat const ASLayoutElementParentDimensionUndefined;
+AS_EXTERN CGFloat const ASLayoutElementParentDimensionUndefined;
 
 /** A constant that indicates that the parent's size is not yet determined in either dimension. */
-ASDK_EXTERN CGSize const ASLayoutElementParentSizeUndefined;
+AS_EXTERN CGSize const ASLayoutElementParentSizeUndefined;
 
 /** Type of ASLayoutElement  */
-typedef NS_ENUM(unsigned char, ASLayoutElementType) {
+typedef NS_ENUM(NSUInteger, ASLayoutElementType) {
   ASLayoutElementTypeLayoutSpec,
   ASLayoutElementTypeDisplayNode
 };
@@ -41,11 +42,11 @@ typedef NS_ENUM(unsigned char, ASLayoutElementType) {
 /**
  * The ASLayoutElement protocol declares a method for measuring the layout of an object. A layout
  * is defined by an ASLayout return value, and must specify 1) the size (but not position) of the
- * layoutElement object, and 2) the size and position of all of its immediate child objects. The tree 
- * recursion is driven by parents requesting layouts from their children in order to determine their 
+ * layoutElement object, and 2) the size and position of all of its immediate child objects. The tree
+ * recursion is driven by parents requesting layouts from their children in order to determine their
  * size, followed by the parents setting the position of the children once the size is known
  *
- * The protocol also implements a "family" of LayoutElement protocols. These protocols contain layout 
+ * The protocol also implements a "family" of LayoutElement protocols. These protocols contain layout
  * options that can be used for specific layout specs. For example, ASStackLayoutSpec has options
  * defining how a layoutElement should shrink or grow based upon available space.
  *
@@ -117,7 +118,7 @@ typedef NS_ENUM(unsigned char, ASLayoutElementType) {
  * The base implementation of -layoutThatFits:parentSize: does the following for you:
  * 1. First, it uses the parentSize parameter to resolve the nodes's size (the one assigned to the size property).
  * 2. Then, it intersects the resolved size with the constrainedSize parameter. If the two don't intersect,
- *    constrainedSize wins. This allows a component to always override its children's sizes when computing its layout.
+ *    constrainedSize wins. This allows a component to always override its childrens' sizes when computing its layout.
  *    (The analogy for UIView: you might return a certain size from -sizeThatFits:, but a parent view can always override
  *    that size and set your frame to any size.)
  * 3. It caches it result for reuse
@@ -144,24 +145,24 @@ typedef NS_ENUM(unsigned char, ASLayoutElementType) {
 
 #pragma mark - ASLayoutElementStyle
 
-ASDK_EXTERN NSString * const ASLayoutElementStyleWidthProperty;
-ASDK_EXTERN NSString * const ASLayoutElementStyleMinWidthProperty;
-ASDK_EXTERN NSString * const ASLayoutElementStyleMaxWidthProperty;
+AS_EXTERN NSString * const ASLayoutElementStyleWidthProperty;
+AS_EXTERN NSString * const ASLayoutElementStyleMinWidthProperty;
+AS_EXTERN NSString * const ASLayoutElementStyleMaxWidthProperty;
 
-ASDK_EXTERN NSString * const ASLayoutElementStyleHeightProperty;
-ASDK_EXTERN NSString * const ASLayoutElementStyleMinHeightProperty;
-ASDK_EXTERN NSString * const ASLayoutElementStyleMaxHeightProperty;
+AS_EXTERN NSString * const ASLayoutElementStyleHeightProperty;
+AS_EXTERN NSString * const ASLayoutElementStyleMinHeightProperty;
+AS_EXTERN NSString * const ASLayoutElementStyleMaxHeightProperty;
 
-ASDK_EXTERN NSString * const ASLayoutElementStyleSpacingBeforeProperty;
-ASDK_EXTERN NSString * const ASLayoutElementStyleSpacingAfterProperty;
-ASDK_EXTERN NSString * const ASLayoutElementStyleFlexGrowProperty;
-ASDK_EXTERN NSString * const ASLayoutElementStyleFlexShrinkProperty;
-ASDK_EXTERN NSString * const ASLayoutElementStyleFlexBasisProperty;
-ASDK_EXTERN NSString * const ASLayoutElementStyleAlignSelfProperty;
-ASDK_EXTERN NSString * const ASLayoutElementStyleAscenderProperty;
-ASDK_EXTERN NSString * const ASLayoutElementStyleDescenderProperty;
+AS_EXTERN NSString * const ASLayoutElementStyleSpacingBeforeProperty;
+AS_EXTERN NSString * const ASLayoutElementStyleSpacingAfterProperty;
+AS_EXTERN NSString * const ASLayoutElementStyleFlexGrowProperty;
+AS_EXTERN NSString * const ASLayoutElementStyleFlexShrinkProperty;
+AS_EXTERN NSString * const ASLayoutElementStyleFlexBasisProperty;
+AS_EXTERN NSString * const ASLayoutElementStyleAlignSelfProperty;
+AS_EXTERN NSString * const ASLayoutElementStyleAscenderProperty;
+AS_EXTERN NSString * const ASLayoutElementStyleDescenderProperty;
 
-ASDK_EXTERN NSString * const ASLayoutElementStyleLayoutPositionProperty;
+AS_EXTERN NSString * const ASLayoutElementStyleLayoutPositionProperty;
 
 @protocol ASLayoutElementStyleDelegate <NSObject>
 - (void)style:(__kindof ASLayoutElementStyle *)style propertyDidChange:(NSString *)propertyName;
@@ -233,13 +234,13 @@ ASDK_EXTERN NSString * const ASLayoutElementStyleLayoutPositionProperty;
 #pragma mark - ASLayoutElementStyleSizeHelpers
 
 /**
- * @abstract Provides a suggested size for a layout element. If the optional minSize or maxSize are provided, 
- * and the preferredSize exceeds these, the minSize or maxSize will be enforced. If this optional value is not 
+ * @abstract Provides a suggested size for a layout element. If the optional minSize or maxSize are provided,
+ * and the preferredSize exceeds these, the minSize or maxSize will be enforced. If this optional value is not
  * provided, the layout element’s size will default to it’s intrinsic content size provided calculateSizeThatFits:
- * 
+ *
  * @discussion This method is optional, but one of either preferredSize or preferredLayoutSize is required
- * for nodes that either have no intrinsic content size or 
- * should be laid out at a different size than its intrinsic content size. For example, this property could be 
+ * for nodes that either have no intrinsic content size or
+ * should be laid out at a different size than its intrinsic content size. For example, this property could be
  * set on an ASImageNode to display at a size different from the underlying image size.
  *
  * @warning Calling the getter when the size's width or height are relative will cause an assert.
@@ -247,24 +248,24 @@ ASDK_EXTERN NSString * const ASLayoutElementStyleLayoutPositionProperty;
 @property (nonatomic) CGSize preferredSize;
 
  /**
- * @abstract An optional property that provides a minimum size bound for a layout element. If provided, this restriction will 
- * always be enforced. If a parent layout element’s minimum size is smaller than its child’s minimum size, the child’s  
- * minimum size will be enforced and its size will extend out of the layout spec’s.  
- * 
+ * @abstract An optional property that provides a minimum size bound for a layout element. If provided, this restriction will
+ * always be enforced. If a parent layout element’s minimum size is smaller than its child’s minimum size, the child’s
+ * minimum size will be enforced and its size will extend out of the layout spec’s.
+ *
  * @discussion For example, if you set a preferred relative width of 50% and a minimum width of 200 points on an
- * element in a full screen container, this would result in a width of 160 points on an iPhone screen. However, 
+ * element in a full screen container, this would result in a width of 160 points on an iPhone screen. However,
  * since 160 pts is lower than the minimum width of 200 pts, the minimum width would be used.
  */
 @property (nonatomic) CGSize minSize;
 - (CGSize)minSize UNAVAILABLE_ATTRIBUTE;
 
 /**
- * @abstract An optional property that provides a maximum size bound for a layout element. If provided, this restriction will 
- * always be enforced.  If a child layout element’s maximum size is smaller than its parent, the child’s maximum size will 
- * be enforced and its size will extend out of the layout spec’s.  
- * 
+ * @abstract An optional property that provides a maximum size bound for a layout element. If provided, this restriction will
+ * always be enforced.  If a child layout element’s maximum size is smaller than its parent, the child’s maximum size will
+ * be enforced and its size will extend out of the layout spec’s.
+ *
  * @discussion For example, if you set a preferred relative width of 50% and a maximum width of 120 points on an
- * element in a full screen container, this would result in a width of 160 points on an iPhone screen. However, 
+ * element in a full screen container, this would result in a width of 160 points on an iPhone screen. However,
  * since 160 pts is higher than the maximum width of 120 pts, the maximum width would be used.
  */
 @property (nonatomic) CGSize maxSize;
@@ -273,8 +274,8 @@ ASDK_EXTERN NSString * const ASLayoutElementStyleLayoutPositionProperty;
 /**
  * @abstract Provides a suggested RELATIVE size for a layout element. An ASLayoutSize uses percentages rather
  * than points to specify layout. E.g. width should be 50% of the parent’s width. If the optional minLayoutSize or
- * maxLayoutSize are provided, and the preferredLayoutSize exceeds these, the minLayoutSize or maxLayoutSize 
- * will be enforced. If this optional value is not provided, the layout element’s size will default to its intrinsic content size 
+ * maxLayoutSize are provided, and the preferredLayoutSize exceeds these, the minLayoutSize or maxLayoutSize
+ * will be enforced. If this optional value is not provided, the layout element’s size will default to its intrinsic content size
  * provided calculateSizeThatFits:
  */
 @property (nonatomic) ASLayoutSize preferredLayoutSize;

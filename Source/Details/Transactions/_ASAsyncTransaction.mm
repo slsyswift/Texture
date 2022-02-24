@@ -14,12 +14,9 @@
 #import <AsyncDisplayKit/ASThread.h>
 #import <list>
 #import <map>
+#import <mutex>
 
-#ifndef __STRICT_ANSI__
-  #warning "Texture must be compiled with std=c++11 to prevent layout issues. gnu++ is not supported. This is hopefully temporary."
-#endif
-
-ASDK_EXTERN NSRunLoopMode const UITrackingRunLoopMode;
+AS_EXTERN NSRunLoopMode const UITrackingRunLoopMode;
 
 NSInteger const ASDefaultTransactionPriority = 0;
 
@@ -44,7 +41,7 @@ NSInteger const ASDefaultTransactionPriority = 0;
   NSAssert(_operationCompletionBlock == nil, @"Should have been called and released before -dealloc");
 }
 
-- (void)callAndReleaseCompletionBlock:(BOOL)canceled
+- (void)callAndReleaseCompletionBlock:(BOOL)canceled;
 {
   ASDisplayNodeAssertMainThread();
   if (_operationCompletionBlock) {
@@ -223,7 +220,7 @@ void ASAsyncTransactionQueue::GroupImpl::schedule(NSInteger priority, dispatch_q
   
 #if ASDISPLAYNODE_DELAY_DISPLAY
   NSUInteger maxThreads = 1;
-#else 
+#else
   NSUInteger maxThreads = [NSProcessInfo processInfo].activeProcessorCount * 2;
 
   // Bit questionable maybe - we can give main thread more CPU time during tracking.
@@ -268,7 +265,10 @@ void ASAsyncTransactionQueue::GroupImpl::notify(dispatch_queue_t queue, dispatch
   if (_pendingOperations == 0) {
     dispatch_async(queue, block);
   } else {
-    _notifyList.push_back({block, queue});
+    GroupNotify notify;
+    notify._block = block;
+    notify._queue = queue;
+    _notifyList.push_back(notify);
   }
 }
 
@@ -330,7 +330,7 @@ ASAsyncTransactionQueue & ASAsyncTransactionQueue::instance()
 
 - (instancetype)initWithCompletionBlock:(void(^)(_ASAsyncTransaction *, BOOL))completionBlock
 {
-  if ((self = [super init])) {
+  if ((self = [self init])) {
     _completionBlock = completionBlock;
     self.state = ASAsyncTransactionStateOpen;
   }

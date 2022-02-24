@@ -8,24 +8,26 @@
 //
 
 #pragma once
+
 #import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
 #import <AsyncDisplayKit/ASDimension.h>
 #import <AsyncDisplayKit/ASLayoutElement.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
-ASDK_EXTERN CGPoint const ASPointNull; // {NAN, NAN}
+AS_EXTERN CGPoint const ASPointNull; // {NAN, NAN}
 
-ASDK_EXTERN BOOL ASPointIsNull(CGPoint point);
+AS_EXTERN BOOL ASPointIsNull(CGPoint point);
 
-ASDK_EXTERN NSString *const ASThreadDictMaxConstraintSizeKey;
+AS_EXTERN NSString *const ASThreadDictMaxConstraintSizeKey;
 
 /**
  * Safely calculates the layout of the given root layoutElement by guarding against nil nodes.
  * @param rootLayoutElement The root node to calculate the layout for.
  * @param sizeRange The size range to calculate the root layout within.
  */
-ASDK_EXTERN ASLayout *ASCalculateRootLayout(id<ASLayoutElement> rootLayoutElement, const ASSizeRange sizeRange);
+AS_EXTERN ASLayout *ASCalculateRootLayout(id<ASLayoutElement> rootLayoutElement, const ASSizeRange sizeRange);
 
 /**
  * Safely computes the layout of the given node by guarding against nil nodes.
@@ -33,7 +35,7 @@ ASDK_EXTERN ASLayout *ASCalculateRootLayout(id<ASLayoutElement> rootLayoutElemen
  * @param sizeRange The size range to calculate the node layout within.
  * @param parentSize The parent size of the node to calculate the layout for.
  */
-ASDK_EXTERN ASLayout *ASCalculateLayout(id<ASLayoutElement>layoutElement, const ASSizeRange sizeRange, const CGSize parentSize);
+AS_EXTERN ASLayout *ASCalculateLayout(id<ASLayoutElement>layoutElement, const ASSizeRange sizeRange, const CGSize parentSize);
 
 /**
  * A node in the layout tree that represents the size and position of the object that created it (ASLayoutElement).
@@ -57,7 +59,7 @@ ASDK_EXTERN ASLayout *ASCalculateLayout(id<ASLayoutElement>layoutElement, const 
 
 /**
  * Position in parent. Default to ASPointNull.
- * 
+ *
  * @discussion When being used as a sublayout, this property must not equal ASPointNull.
  */
 @property (nonatomic, readonly) CGPoint position;
@@ -68,7 +70,7 @@ ASDK_EXTERN ASLayout *ASCalculateLayout(id<ASLayoutElement>layoutElement, const 
 @property (nonatomic, copy, readonly) NSArray<ASLayout *> *sublayouts;
 
 /**
- * The frame for the given element, or CGRectNull if 
+ * The frame for the given element, or CGRectNull if
  * the element is not a direct descendent of this layout.
  */
 - (CGRect)frameForElement:(id<ASLayoutElement>)layoutElement;

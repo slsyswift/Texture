@@ -15,6 +15,14 @@ NS_ASSUME_NONNULL_BEGIN
 @protocol ASEditableTextNodeDelegate;
 @class ASTextKitComponents;
 
+@interface ASEditableTextNodeTargetForAction: NSObject
+
+@property (nonatomic, strong, readonly) id _Nullable target;
+
+- (instancetype)initWithTarget:(id _Nullable)target;
+
+@end
+
 /**
  @abstract Implements a node that supports text editing.
  @discussion Does not support layer backing.
@@ -49,6 +57,7 @@ NS_ASSUME_NONNULL_BEGIN
  @default true
  */
 @property (nonatomic) BOOL scrollEnabled;
+@property (nonatomic, strong) UIFont *baseFont;
 
 /**
   @abstract Access to underlying UITextView for more configuration options.
@@ -61,6 +70,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 //! @abstract The range of text currently selected. If length is zero, the range is the cursor location.
 @property NSRange selectedRange;
+
+@property (readonly) CGRect selectionRect;
 
 #pragma mark - Placeholder
 /**
@@ -131,6 +142,12 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic) BOOL enablesReturnKeyAutomatically;                  // default is NO (when YES, will automatically disable return key when text widget has zero-length contents, and will automatically enable when text widget has non-zero-length contents)
 @property (nonatomic, getter=isSecureTextEntry) BOOL secureTextEntry;      // default is NO
 
+@property (nonatomic, strong) NSString * _Nullable initialPrimaryLanguage;
+
+- (void)resetInitialPrimaryLanguage;
+- (void)dropAutocorrection;
+- (bool)isCurrentlyEmoji;
+
 @end
 
 @interface ASEditableTextNode (Unavailable)
@@ -143,7 +160,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 #pragma mark -
 /**
- * The methods declared by the ASEditableTextNodeDelegate protocol allow the adopting delegate to 
+ * The methods declared by the ASEditableTextNodeDelegate protocol allow the adopting delegate to
  * respond to notifications such as began and finished editing, selection changed and text updated;
  * and manage whether a specified text should be replaced.
  */
@@ -197,6 +214,12 @@ NS_ASSUME_NONNULL_BEGIN
   @discussion The invocation of this method coincides with the keyboard animating to become hidden.
  */
 - (void)editableTextNodeDidFinishEditing:(ASEditableTextNode *)editableTextNode;
+
+- (BOOL)editableTextNodeShouldCopy:(ASEditableTextNode *)editableTextNode;
+- (BOOL)editableTextNodeShouldPaste:(ASEditableTextNode *)editableTextNode;
+- (ASEditableTextNodeTargetForAction * _Nullable)editableTextNodeTargetForAction:(SEL)action;
+- (BOOL)editableTextNodeShouldReturn:(ASEditableTextNode *)editableTextNode;
+- (void)editableTextNodeBackspaceWhileEmpty:(ASEditableTextNode *)editableTextNode;
 
 @end
 

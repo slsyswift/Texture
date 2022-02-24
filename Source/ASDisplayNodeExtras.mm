@@ -8,8 +8,10 @@
 //
 
 #import <AsyncDisplayKit/ASDisplayNodeExtras.h>
-#import <AsyncDisplayKit/ASDisplayNodeInternal.h>
+#import "ASDisplayNodeInternal.h"
+#import <AsyncDisplayKit/ASDisplayNode+FrameworkPrivate.h>
 #import <AsyncDisplayKit/ASDisplayNode+Ancestry.h>
+#import <AsyncDisplayKit/ASDisplayNode.h>
 
 #import <queue>
 #import <AsyncDisplayKit/ASRunLoopQueue.h>
@@ -65,7 +67,7 @@ ASInterfaceState ASInterfaceStateForDisplayNode(ASDisplayNode *displayNode, UIWi
         // if not already, about to be set to invisible as it is not possible for an element to be visible
         // while outside of a window.
         ASInterfaceState interfaceState = displayNode.pendingInterfaceState;
-        return (window == nil ? (interfaceState & (~ASInterfaceStateVisible)) : interfaceState);
+        return (window == nil ? (interfaceState &= (~ASInterfaceStateVisible)) : interfaceState);
     } else {
         // For not range managed nodes we might be on our own to try to guess if we're visible.
         return (window == nil ? ASInterfaceStateNone : (ASInterfaceStateVisible | ASInterfaceStateDisplay));

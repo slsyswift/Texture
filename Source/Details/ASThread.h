@@ -16,8 +16,6 @@
 #import <AsyncDisplayKit/ASAvailability.h>
 #import <AsyncDisplayKit/ASBaseDefines.h>
 #import <AsyncDisplayKit/ASConfigurationInternal.h>
-#import <AsyncDisplayKit/ASLog.h>
-#import <AsyncDisplayKit/ASObjectDescriptionHelpers.h>
 #import <AsyncDisplayKit/ASRecursiveUnfairLock.h>
 
 ASDISPLAYNODE_INLINE AS_WARN_UNUSED_RESULT BOOL ASDisplayNodeThreadIsMain()
@@ -40,14 +38,14 @@ ASDISPLAYNODE_INLINE AS_WARN_UNUSED_RESULT BOOL ASDisplayNodeThreadIsMain()
 
 /// Same as ASLockScope(1) but lock isn't retained (be careful).
 #define ASLockScopeUnowned(nsLocking) \
-  unowned id<NSLocking> __lockToken __attribute__((cleanup(_ASLockScopeUnownedCleanup))) = nsLocking; \
+  __unsafe_unretained id<NSLocking> __lockToken __attribute__((cleanup(_ASLockScopeUnownedCleanup))) = nsLocking; \
   [__lockToken lock];
 
 ASDISPLAYNODE_INLINE void _ASLockScopeCleanup(id<NSLocking> __strong * const lockPtr) {
   [*lockPtr unlock];
 }
 
-ASDISPLAYNODE_INLINE void _ASLockScopeUnownedCleanup(id<NSLocking> unowned * const lockPtr) {
+ASDISPLAYNODE_INLINE void _ASLockScopeUnownedCleanup(id<NSLocking> __unsafe_unretained * const lockPtr) {
   [*lockPtr unlock];
 }
 
@@ -100,8 +98,8 @@ ASDISPLAYNODE_INLINE void _ASUnlockScopeCleanup(id<NSLocking> __strong *lockPtr)
 #include <thread>
 
 // These macros are here for legacy reasons. We may get rid of them later.
-#define DISABLED_ASAssertLocked(m)
-#define DISABLED_ASAssertUnlocked(m)
+#define ASAssertLocked(m) m.AssertHeld()
+#define ASAssertUnlocked(m) m.AssertNotHeld()
 
 namespace AS {
   
@@ -118,12 +116,6 @@ namespace AS {
   public:
     /// Constructs a plain mutex (the default).
     Mutex () : Mutex (false) {}
-
-    void SetDebugNameWithObject(id object) {
-#if ASEnableVerboseLogging && ASDISPLAYNODE_ASSERTIONS_ENABLED
-      _debug_name = std::string(ASObjectDescriptionMakeTiny(object).UTF8String);
-#endif
-    }
 
     ~Mutex () {
       // Manually destroy since unions can't do it.
@@ -159,11 +151,7 @@ namespace AS {
           success = os_unfair_lock_trylock(&_unfair);
           break;
         case RecursiveUnfair:
-          if (@available(macOS 10.12, iOS 10.0, tvOS 10.0, watchOS 3.0, *)) {
-            success = ASRecursiveUnfairLockTryLock(&_runfair);
-          } else {
-            success = _recursive.try_lock();
-          }
+          success = ASRecursiveUnfairLockTryLock(&_runfair);
           break;
       }
       if (success) {
@@ -184,11 +172,7 @@ namespace AS {
           os_unfair_lock_lock(&_unfair);
           break;
         case RecursiveUnfair:
-          if (@available(macOS 10.12, iOS 10.0, tvOS 10.0, watchOS 3.0, *)) {
-            ASRecursiveUnfairLockLock(&_runfair);
-          } else {
-            _recursive.lock();
-          }
+          ASRecursiveUnfairLockLock(&_runfair);
           break;
       }
       DidLock();
@@ -207,11 +191,7 @@ namespace AS {
           os_unfair_lock_unlock(&_unfair);
           break;
         case RecursiveUnfair:
-          if (@available(macOS 10.12, iOS 10.0, tvOS 10.0, watchOS 3.0, *)) {
-            ASRecursiveUnfairLockUnlock(&_runfair);
-          } else {
-            _recursive.unlock();
-          }
+          ASRecursiveUnfairLockUnlock(&_runfair);
           break;
       }
     }
@@ -230,18 +210,14 @@ namespace AS {
       static dispatch_once_t onceToken;
       dispatch_once(&onceToken, ^{
         if (AS_AVAILABLE_IOS_TVOS(10, 10)) {
-          gMutex_unfair = YES;
+          gMutex_unfair = ASActivateExperimentalFeature(ASExperimentalUnfairLock);
         }
       });
       
       if (recursive) {
         if (gMutex_unfair) {
           _type = RecursiveUnfair;
-          if (@available(macOS 10.12, iOS 10.0, tvOS 10.0, watchOS 3.0, *)) {
-            _runfair = AS_RECURSIVE_UNFAIR_LOCK_INIT;
-          } else {
-            new (&_recursive) std::recursive_mutex();
-          }
+          _runfair = AS_RECURSIVE_UNFAIR_LOCK_INIT;
         } else {
           _type = Recursive;
           new (&_recursive) std::recursive_mutex();
@@ -267,11 +243,6 @@ namespace AS {
 
     void WillUnlock() {
 #if ASDISPLAYNODE_ASSERTIONS_ENABLED
-#if ASEnableVerboseLogging
-      if (!_debug_name.empty()) {
-        as_log_verbose(ASLockingLog(), "unlock %s, count is %d", _debug_name.c_str(), (int)(_count - 1));
-      }
-#endif
       if (--_count == 0) {
         _owner = std::thread::id();
       }
@@ -280,11 +251,6 @@ namespace AS {
     
     void DidLock() {
 #if ASDISPLAYNODE_ASSERTIONS_ENABLED
-#if ASEnableVerboseLogging
-      if (!_debug_name.empty()) {
-        as_log_verbose(ASLockingLog(), "lock %s, count is %d", _debug_name.c_str(), (int)(_count + 1));
-      }
-#endif
       if (++_count == 1) {
         // New owner.
         _owner = std::this_thread::get_id();
@@ -299,10 +265,6 @@ namespace AS {
       std::mutex _plain;
       std::recursive_mutex _recursive;
     };
-#if ASEnableVerboseLogging
-    std::string _debug_name;
-#endif
-
 #if ASDISPLAYNODE_ASSERTIONS_ENABLED
     std::thread::id _owner = std::thread::id();
     int _count = 0;

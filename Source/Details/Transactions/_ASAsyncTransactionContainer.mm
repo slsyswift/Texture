@@ -8,9 +8,8 @@
 //
 
 #import <AsyncDisplayKit/_ASAsyncTransactionContainer.h>
-#import <AsyncDisplayKit/_ASAsyncTransactionContainer+Private.h>
+#import "_ASAsyncTransactionContainer+Private.h"
 
-#import <AsyncDisplayKit/ASInternalHelpers.h>
 #import <AsyncDisplayKit/_ASAsyncTransaction.h>
 #import <AsyncDisplayKit/_ASAsyncTransactionGroup.h>
 
@@ -49,9 +48,9 @@
 {
   _ASAsyncTransaction *transaction = self.asyncdisplaykit_currentAsyncTransaction;
   if (transaction == nil) {
-    NSMutableSet<_ASAsyncTransaction *> *transactions = self.asyncdisplaykit_asyncLayerTransactions;
+    NSHashTable *transactions = self.asyncdisplaykit_asyncLayerTransactions;
     if (transactions == nil) {
-      transactions = ASCreatePointerBasedMutableSet();
+      transactions = [NSHashTable hashTableWithOptions:NSHashTableObjectPointerPersonality];
       self.asyncdisplaykit_asyncLayerTransactions = transactions;
     }
     __weak CALayer *weakSelf = self;
@@ -60,11 +59,7 @@
       if (self == nil) {
         return;
       }
-      [self.asyncdisplaykit_asyncLayerTransactions removeObject:completedTransaction];
-      if (self.asyncdisplaykit_asyncLayerTransactions.count == 0) {
-        // Reclaim object memory.
-        self.asyncdisplaykit_asyncLayerTransactions = nil;
-      }
+      [transactions removeObject:completedTransaction];
       [self asyncdisplaykit_asyncTransactionContainerDidCompleteTransaction:completedTransaction];
     }];
     [transactions addObject:transaction];

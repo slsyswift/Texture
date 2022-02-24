@@ -8,6 +8,7 @@
 //
 
 #import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
 #import <AsyncDisplayKit/ASBaseDefines.h>
 #import <AsyncDisplayKit/ASLocking.h>
 
@@ -32,7 +33,8 @@ AS_SUBCLASSING_RESTRICTED
  *
  * @discussion You may pass @c nil for the handler if you simply want the objects to
  * be retained at enqueue time, and released during the run loop step. This is useful
- * for creating a "main deallocation queue".
+ * for creating a "main deallocation queue", as @c ASDeallocQueue creates its own
+ * worker thread with its own run loop.
  */
 - (instancetype)initWithRunLoop:(CFRunLoopRef)runloop
                   retainObjects:(BOOL)retainsObjects
@@ -76,5 +78,16 @@ NS_INLINE ASCATransactionQueue *ASCATransactionQueueGet(void) {
   });
   return _ASSharedCATransactionQueue;
 }
+
+@interface ASDeallocQueue : NSObject
+
+@property (class, readonly) ASDeallocQueue *sharedDeallocationQueue;
++ (ASDeallocQueue *)sharedDeallocationQueue NS_RETURNS_RETAINED;
+
+- (void)drain;
+
+- (void)releaseObjectInBackground:(id __strong _Nullable * _Nonnull)objectPtr;
+
+@end
 
 NS_ASSUME_NONNULL_END

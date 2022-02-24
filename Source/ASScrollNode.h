@@ -7,6 +7,7 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
+#import <UIKit/UIKit.h>
 #import <AsyncDisplayKit/ASDisplayNode.h>
 #import <AsyncDisplayKit/ASScrollDirection.h>
 
@@ -44,6 +45,8 @@ NS_ASSUME_NONNULL_BEGIN
  * @default ASScrollDirectionVerticalDirections
  */
 @property ASScrollDirection scrollableDirections;
+
+@property BOOL canCancelAllTouchesInViews;
 
 @end
 

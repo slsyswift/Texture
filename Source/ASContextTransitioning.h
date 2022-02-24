@@ -7,6 +7,7 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
+#import <UIKit/UIKit.h>
 #import <AsyncDisplayKit/ASDimension.h>
 
 @class ASDisplayNode;
@@ -14,8 +15,8 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-ASDK_EXTERN NSString * const ASTransitionContextFromLayoutKey;
-ASDK_EXTERN NSString * const ASTransitionContextToLayoutKey;
+AS_EXTERN NSString * const ASTransitionContextFromLayoutKey;
+AS_EXTERN NSString * const ASTransitionContextToLayoutKey;
 
 @protocol ASContextTransitioning <NSObject>
 

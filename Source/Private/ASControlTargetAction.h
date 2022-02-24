@@ -8,13 +8,14 @@
 //
 
 #import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
 
 /**
  @abstract ASControlTargetAction stores target action pairs registered for specific ASControlNodeEvent values.
  */
 @interface ASControlTargetAction : NSObject
 
-/** 
+/**
  The action to be called on the registered target.
  */
 @property (nonatomic) SEL action;

@@ -7,6 +7,7 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
+#import <UIKit/UIKit.h>
 #import <AsyncDisplayKit/ASLayoutElement.h>
 #import <AsyncDisplayKit/ASAsciiArtBoxCreator.h>
 #import <AsyncDisplayKit/ASLocking.h>
@@ -19,7 +20,7 @@ NS_ASSUME_NONNULL_BEGIN
  */
 @interface ASLayoutSpec : NSObject <ASLayoutElement, ASLayoutElementStylability, NSFastEnumeration, ASDescriptionProvider, ASLocking>
 
-/** 
+/**
  * Creation of a layout spec should only happen by a user in layoutSpecThatFits:. During that method, a
  * layout spec can be created and mutated. Once it is passed back to ASDK, the isMutable flag will be
  * set to NO and any further mutations will cause an assert.
@@ -43,7 +44,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 /**
  * An array of ASLayoutElement children
- * 
+ *
  * @discussion Every ASLayoutSpec must act on at least one child. The ASLayoutSpec base class takes the
  * reponsibility of holding on to the spec children. Some layout specs, like ASStackLayoutSpec,
  * can take an unknown number of children. In this case, the this method should be used.
